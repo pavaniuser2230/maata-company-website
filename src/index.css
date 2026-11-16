@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --color-midnight-teal: #092F35;
+  --color-deep-teal: #0F4C5C;
+  --color-dark-teal: #0A3A47;
+  --color-emerald-brand: #0F8A5F;
+  --color-deep-green: #0B5D4B;
+  --color-warm-ivory: #F7F4EC;
+  --color-warm-ivory-muted: #EDE8DA;
+  --color-accent-yellow: #FFD84A;
+
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Telugu", "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Bengali", "Noto Sans Gujarati", "Noto Sans Gurmukhi", system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", "Noto Sans Telugu", "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Bengali", "Noto Sans Gujarati", "Noto Sans Gurmukhi", Georgia, serif;
+  --font-telugu: "Noto Sans Telugu", "Plus Jakarta Sans", sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    color: #092F35;
+    background-color: #F7F4EC;
+  }
+
+  html[lang]:not([lang="en"]) body {
+    line-height: 1.72;
+  }
+
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  .font-editorial {
+    font-family: var(--font-serif);
+  }
+
+  .font-telugu {
+    font-family: var(--font-telugu);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
