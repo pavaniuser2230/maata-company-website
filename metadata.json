@@ -2,5 +2,7 @@
   "name": "MAATA Technologies",
   "description": "Corporate foundation for MAATA Technologies, the company behind MAATA India. Built in India. Designed for Indians. Headquartered in Chittoor, Andhra Pradesh.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
