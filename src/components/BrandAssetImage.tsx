@@ -7,6 +7,7 @@ interface BrandAssetImageProps {
   className?: string;
   priority?: boolean;
   tone?: 'light' | 'dark';
+  borderless?: boolean;
 }
 
 /**
@@ -19,6 +20,7 @@ export const BrandAssetImage: React.FC<BrandAssetImageProps> = ({
   className = '',
   priority = false,
   tone = 'light',
+  borderless = false,
 }) => {
   const [failed, setFailed] = useState(false);
   const asset = BRAND_ASSETS[assetId];
@@ -26,16 +28,16 @@ export const BrandAssetImage: React.FC<BrandAssetImageProps> = ({
 
   const isContain = asset.fitMode === 'contain';
 
+  const frameClass = borderless
+    ? 'bg-transparent'
+    : tone === 'dark'
+      ? 'bg-[#0A3A47] border border-white/12'
+      : isContain
+        ? 'bg-[#F7F4EC] border border-[#092F35]/10'
+        : 'bg-[#092F35] border border-[#092F35]/12';
+
   return (
-    <div
-      className={`relative overflow-hidden ${asset.aspectClass} ${
-        tone === 'dark'
-          ? 'bg-[#0A3A47] border border-white/12'
-          : isContain
-            ? 'bg-[#F7F4EC] border border-[#092F35]/10'
-            : 'bg-[#092F35] border border-[#092F35]/12'
-      } ${className}`}
-    >
+    <div className={`relative overflow-hidden ${asset.aspectClass} ${frameClass} ${className}`}>
       {!failed ? (
         <img
           src={asset.src}

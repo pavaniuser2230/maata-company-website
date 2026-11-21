@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Lock, ShieldCheck, UserPlus } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
-import { adminApi, type AdminRole, type AdminUser } from '../../services/cmsApi';
+import { adminApi, type AdminRole, type AdminUser, type LeadershipRole } from '../../services/cmsApi';
 import { formatAdminDate, StatusBadge } from '../../components/admin/AdminUi';
 
 type AuditLogRow = Awaited<ReturnType<typeof adminApi.getAuditLogs>>['items'][number];
@@ -87,7 +87,7 @@ export const AdminUsersPage: React.FC = () => {
 
   const handleUpdateUser = async (
     target: AdminUser,
-    patch: { role?: AdminRole; leadershipRole?: 'founder' | 'ceo' | 'none'; isActive?: boolean }
+    patch: { role?: AdminRole; leadershipRole?: LeadershipRole; isActive?: boolean }
   ) => {
     setFeedback(null);
     try {
@@ -161,6 +161,9 @@ export const AdminUsersPage: React.FC = () => {
               <option value="support_manager">Support Manager</option>
               <option value="founder">Founder</option>
               <option value="ceo">Co-Founder &amp; CEO</option>
+              <option value="director">Director</option>
+              <option value="executive">Executive</option>
+              <option value="administrator">Administrator</option>
               <option value="super_admin">Super Admin</option>
             </select>
           </div>
@@ -239,6 +242,9 @@ export const AdminUsersPage: React.FC = () => {
                           <option value="super_admin">Super Admin</option>
                           <option value="ceo">Co-Founder &amp; CEO</option>
                           <option value="founder">Founder</option>
+                          <option value="director">Director</option>
+                          <option value="executive">Executive</option>
+                          <option value="administrator">Administrator</option>
                           <option value="content_manager">Content Manager</option>
                           <option value="support_manager">Support Manager</option>
                         </select>
@@ -247,15 +253,19 @@ export const AdminUsersPage: React.FC = () => {
                             value={u.leadership_role || 'none'}
                             onChange={(e) =>
                               handleUpdateUser(u, {
-                                leadershipRole: e.target.value as 'founder' | 'ceo' | 'none',
+                                leadershipRole: e.target.value as LeadershipRole,
                               })
                             }
                             aria-label={`Leadership access for ${u.email}`}
                             className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-xs"
                           >
                             <option value="none">No Leadership Portal</option>
+                            <option value="super_admin">Portal: Super Admin</option>
                             <option value="ceo">Portal: Co-Founder &amp; CEO</option>
                             <option value="founder">Portal: Founder</option>
+                            <option value="director">Portal: Director</option>
+                            <option value="executive">Portal: Executive</option>
+                            <option value="administrator">Portal: Administrator</option>
                           </select>
                         )}
                       </td>

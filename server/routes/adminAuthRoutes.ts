@@ -11,10 +11,12 @@ import {
   hashToken,
   isStrongPassword,
   resolveLeadershipRole,
+  timingSafeStringEqual,
   verifyPassword,
   verifyTotpCode,
   writeAuditLog,
   type AdminRole,
+  type LeadershipRole,
 } from '../auth/security.ts';
 import {
   clearSessionCookie,
@@ -33,29 +35,50 @@ const authLimiter = createRateLimiter({
   message: 'Too many authentication attempts. Please wait before trying again.',
 });
 
-adminAuthRouter.get('/setup-status', (_req, res) => {
+function getConfiguredSetupToken(): string {
+  return (process.env.INITIAL_SETUP_TOKEN || env.initialSetupToken || '').trim();
+}
+
+export function getInitialSetupState() {
   const db = getDb();
-  const row = db
+  const superAdminRow = db
     .prepare("SELECT COUNT(*) as c FROM admin_users WHERE role = 'super_admin'")
     .get() as { c: number };
-  res.json({ needsInitialSetup: row.c === 0 });
+  const lockRow = db
+    .prepare("SELECT value FROM system_settings WHERE key = 'initial_setup_completed'")
+    .get() as { value: string } | undefined;
+
+  const setupLocked = superAdminRow.c > 0 || lockRow?.value === 'true';
+  return {
+    needsInitialSetup: !setupLocked,
+    setupLocked,
+    requiresSetupToken: getConfiguredSetupToken().length > 0,
+  };
+}
+
+adminAuthRouter.get('/setup-status', (_req, res) => {
+  res.json(getInitialSetupState());
 });
 
 const initialSetupSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  email: z.string().trim().email().max(160),
-  password: z.string().min(10).max(128),
-  leadershipRole: z.enum(['founder', 'ceo', 'none']).optional(),
+  name: z.string().trim().min(2, 'Full name must be at least 2 characters.').max(100),
+  email: z.string().trim().email('Enter a valid official email address.').max(160),
+  password: z.string().min(10, 'Password must be at least 10 characters long.').max(128),
+  confirmPassword: z.string().optional(),
+  leadershipRole: z
+    .enum(['super_admin', 'founder', 'ceo', 'director', 'executive', 'administrator', 'none'])
+    .optional(),
+  setupToken: z.string().trim().optional(),
+  autoSignIn: z.boolean().optional(),
 });
 
 adminAuthRouter.post('/setup-initial-admin', authLimiter, (req, res) => {
-  const db = getDb();
-  const existingCount = db
-    .prepare("SELECT COUNT(*) as c FROM admin_users WHERE role = 'super_admin'")
-    .get() as { c: number };
-
-  if (existingCount.c > 0) {
-    res.status(403).json({ error: 'Initial Super Admin account has already been configured.' });
+  const stateBefore = getInitialSetupState();
+  if (stateBefore.setupLocked) {
+    res.status(403).json({
+      error: 'Initial Super Admin setup has already been completed and is permanently locked.',
+      code: 'SETUP_LOCKED',
+    });
     return;
   }
 
@@ -65,36 +88,107 @@ adminAuthRouter.post('/setup-initial-admin', authLimiter, (req, res) => {
     return;
   }
 
+  if (
+    parsed.data.confirmPassword !== undefined &&
+    parsed.data.confirmPassword !== parsed.data.password
+  ) {
+    res.status(400).json({ error: 'Password and password confirmation do not match.' });
+    return;
+  }
+
+  const configuredToken = getConfiguredSetupToken();
+  if (configuredToken) {
+    const submittedToken = parsed.data.setupToken || '';
+    if (!submittedToken || !timingSafeStringEqual(submittedToken, configuredToken)) {
+      const db = getDb();
+      writeAuditLog(db, {
+        actorUserId: null,
+        actorEmail: parsed.data.email.toLowerCase(),
+        actorRole: 'unknown',
+        action: 'INITIAL_SETUP_REJECTED',
+        resourceType: 'admin_users',
+        details: { reason: 'invalid_setup_token' },
+        ipAddress: getClientIp(req),
+      });
+      res.status(403).json({
+        error: 'Valid server-side setup authorization key is required for initial registration.',
+        code: 'INVALID_SETUP_TOKEN',
+      });
+      return;
+    }
+  }
+
   const strength = isStrongPassword(parsed.data.password);
   if (!strength.valid) {
     res.status(400).json({ error: strength.reason });
     return;
   }
 
+  const db = getDb();
   const userId = crypto.randomUUID();
   const email = parsed.data.email.toLowerCase();
-  const leadershipRole =
+  const leadershipRole: LeadershipRole =
     parsed.data.leadershipRole || (/pavani/i.test(parsed.data.name) ? 'ceo' : 'none');
-  const rawToken = generateOpaqueToken();
+  const shouldAutoSignIn = parsed.data.autoSignIn !== false;
+  const rawToken = shouldAutoSignIn ? generateOpaqueToken() : '';
   const expiresAt = new Date(Date.now() + env.sessionTtlHours * 3600 * 1000).toISOString();
 
-  db.exec('BEGIN');
+  db.exec('BEGIN IMMEDIATE');
   try {
-    db.prepare(`
-      INSERT INTO admin_users (id, name, email, password_hash, role, leadership_role, is_active, last_login_at)
-      VALUES (?, ?, ?, ?, 'super_admin', ?, 1, datetime('now'))
-    `).run(userId, parsed.data.name, email, hashPassword(parsed.data.password), leadershipRole);
+    // Re-check atomically inside the exclusive write transaction to eliminate race conditions
+    const superAdminCheck = db
+      .prepare("SELECT COUNT(*) as c FROM admin_users WHERE role = 'super_admin'")
+      .get() as { c: number };
+    const lockCheck = db
+      .prepare("SELECT value FROM system_settings WHERE key = 'initial_setup_completed'")
+      .get() as { value: string } | undefined;
+
+    if (superAdminCheck.c > 0 || lockCheck?.value === 'true') {
+      db.exec('ROLLBACK');
+      res.status(403).json({
+        error: 'Initial Super Admin setup has already been completed and is permanently locked.',
+        code: 'SETUP_LOCKED',
+      });
+      return;
+    }
+
+    const existingEmail = db.prepare('SELECT id FROM admin_users WHERE email = ?').get(email);
+    if (existingEmail) {
+      db.exec('ROLLBACK');
+      res.status(409).json({ error: 'An account with this email already exists.' });
+      return;
+    }
 
     db.prepare(`
-      INSERT INTO admin_sessions (token_hash, user_id, expires_at, ip_address, user_agent)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO admin_users (id, name, email, password_hash, role, leadership_role, is_active, last_login_at)
+      VALUES (?, ?, ?, ?, 'super_admin', ?, 1, ?)
     `).run(
-      hashToken(rawToken),
       userId,
-      expiresAt,
-      getClientIp(req),
-      String(req.headers['user-agent'] || '').slice(0, 250)
+      parsed.data.name,
+      email,
+      hashPassword(parsed.data.password),
+      leadershipRole,
+      shouldAutoSignIn ? new Date().toISOString() : null
     );
+
+    db.prepare(`
+      INSERT INTO system_settings (key, value, updated_at)
+      VALUES ('initial_setup_completed', 'true', datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = 'true', updated_at = datetime('now')
+    `).run();
+
+    if (shouldAutoSignIn) {
+      db.prepare(`
+        INSERT INTO admin_sessions (token_hash, user_id, expires_at, ip_address, user_agent)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        hashToken(rawToken),
+        userId,
+        expiresAt,
+        getClientIp(req),
+        String(req.headers['user-agent'] || '').slice(0, 250)
+      );
+    }
 
     writeAuditLog(db, {
       actorUserId: userId,
@@ -103,18 +197,25 @@ adminAuthRouter.post('/setup-initial-admin', authLimiter, (req, res) => {
       action: 'INITIAL_SUPER_ADMIN_SETUP',
       resourceType: 'admin_users',
       resourceId: userId,
-      details: { leadershipRole },
+      details: { leadershipRole, autoSignIn: shouldAutoSignIn, setupLocked: true },
       ipAddress: getClientIp(req),
     });
 
     db.exec('COMMIT');
   } catch (err) {
-    db.exec('ROLLBACK');
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      // Already rolled back
+    }
     throw err;
   }
 
-  issueSessionCookie(req, res, rawToken);
+  if (shouldAutoSignIn) {
+    issueSessionCookie(req, res, rawToken);
+  }
   res.status(201).json({
+    setupLocked: true,
     user: {
       id: userId,
       name: parsed.data.name,

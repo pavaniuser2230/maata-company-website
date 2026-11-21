@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { formatAdminDate } from '../../components/admin/AdminUi';
+import { formatExecutiveDesignation } from '../../components/leadership/LeadershipLayout';
+import type { PermissionKey } from '../../services/cmsApi';
 import { leadershipApi, type LeadershipReport, type LeadershipWorkItem } from '../../services/leadershipApi';
 
 interface OverviewResponse {
@@ -38,6 +40,24 @@ interface OverviewResponse {
     created_at: string;
   }[];
 }
+
+const OVERVIEW_PERMISSION_LABELS: Record<PermissionKey, string> = {
+  'leadership.overview': 'Company Overview',
+  'leadership.product.read': 'Product Tracker (Read)',
+  'leadership.product.write': 'Product Tracker (Edit)',
+  'leadership.marketing.read': 'Marketing (Read)',
+  'leadership.marketing.write': 'Marketing (Edit)',
+  'leadership.testing.read': 'App Testing (Read)',
+  'leadership.testing.write': 'App Testing (Edit)',
+  'leadership.reports.read': 'Business Reports (Read)',
+  'leadership.reports.write': 'Business Reports (Write)',
+  'leadership.documents.read': 'Confidential Documents (Read)',
+  'leadership.documents.write': 'Confidential Documents (Write)',
+  'leadership.publishing': 'Website Publishing',
+  'leadership.enquiries': 'Enquiries & Partnerships',
+  'leadership.settings.security': 'Personal Security & 2FA',
+  'system.admin': 'Super Admin Governance',
+};
 
 export const LeadershipOverviewPage: React.FC = () => {
   const { user } = useAdminAuth();
@@ -67,6 +87,12 @@ export const LeadershipOverviewPage: React.FC = () => {
   const perms = new Set(user?.permissions || []);
   const isSuper = user?.role === 'super_admin';
   const hasPerm = (p: string) => isSuper || perms.has(p as any);
+  const designation = user
+    ? formatExecutiveDesignation(user.role, user.leadershipRole)
+    : 'Executive';
+  const permissionSummary = (user?.permissions || [])
+    .map((key) => OVERVIEW_PERMISSION_LABELS[key] || key)
+    .filter(Boolean);
 
   const countByDomain = (domain: string) =>
     (data?.metrics.workSummary || [])
@@ -76,10 +102,11 @@ export const LeadershipOverviewPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#0F8A5F]">
-              MAATA TECHNOLOGIES · Executive Brief
+              MAATA TECHNOLOGIES · {designation}
+              {isSuper && designation !== 'Super Admin' ? ' · Super Admin' : ''}
             </p>
             <h2 className="mt-1 text-xl font-semibold text-[#092F35]">
               Welcome back, {user?.name}
@@ -90,10 +117,18 @@ export const LeadershipOverviewPage: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {isSuper && (
+              <Link
+                to="/leadership/settings"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#092F35] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0F4C5C] whitespace-nowrap"
+              >
+                <span>Manage Executive Accounts</span>
+              </Link>
+            )}
             {hasPerm('leadership.publishing') && (
               <Link
                 to="/leadership/publishing"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#092F35] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0F4C5C] whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-[#092F35] hover:bg-slate-50 whitespace-nowrap"
               >
                 <Megaphone className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Announcements &amp; Publishing</span>
@@ -108,6 +143,38 @@ export const LeadershipOverviewPage: React.FC = () => {
                 <span>Business Reports</span>
               </Link>
             )}
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 text-xs sm:grid-cols-3">
+          <div>
+            <p className="font-medium uppercase tracking-[0.08em] text-slate-500">
+              Authenticated Executive
+            </p>
+            <p className="mt-1 font-semibold text-[#092F35]">{user?.name}</p>
+            <p className="text-slate-500">{user?.email}</p>
+          </div>
+          <div>
+            <p className="font-medium uppercase tracking-[0.08em] text-slate-500">
+              Assigned Designation &amp; Clearance
+            </p>
+            <p className="mt-1 font-semibold text-[#092F35]">
+              {designation}
+              {isSuper && designation !== 'Super Admin' ? ' (Super Admin)' : ''}
+            </p>
+            <p className="text-slate-500">
+              2FA: {user?.mfaEnabled ? 'Enabled' : 'Optional — configure in Settings'}
+            </p>
+          </div>
+          <div>
+            <p className="font-medium uppercase tracking-[0.08em] text-slate-500">
+              Authorised Permissions ({permissionSummary.length})
+            </p>
+            <p className="mt-1 leading-relaxed text-slate-700">
+              {permissionSummary.length > 0
+                ? permissionSummary.join(' · ')
+                : 'Standard overview access'}
+            </p>
           </div>
         </div>
       </div>

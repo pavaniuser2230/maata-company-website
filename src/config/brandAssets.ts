@@ -40,7 +40,7 @@ export const BRAND_ASSETS: Record<BrandAssetConfig['id'], BrandAssetConfig> = {
     alt: 'G. Pavani — Co-Founder & Chief Executive Officer of MAATA Technologies',
     objectPosition: '50% 50%',
     aspectClass: 'aspect-square',
-    fitMode: 'contain',
+    fitMode: 'cover',
     caption: 'G. Pavani · Co-Founder & CEO',
   },
   foundersCombined: {

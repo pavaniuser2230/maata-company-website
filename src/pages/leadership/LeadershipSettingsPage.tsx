@@ -8,6 +8,7 @@ import {
   type LoginAuditRow,
 } from '../../services/leadershipApi';
 import { formatAdminDate } from '../../components/admin/AdminUi';
+import { FirebaseSyncPanel } from '../../components/admin/FirebaseSyncPanel';
 
 const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'leadership.overview': 'Company Overview',
@@ -55,6 +56,13 @@ export const LeadershipSettingsPage: React.FC = () => {
   const [newAccountPassword, setNewAccountPassword] = useState('');
   const [newRole, setNewRole] = useState<AdminRole>('founder');
   const [creatingTeam, setCreatingTeam] = useState(false);
+
+  // Inline Edit Executive Account
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState<AdminRole>('executive');
+  const [editLeadershipRole, setEditLeadershipRole] = useState<LeadershipRole>('executive');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -159,13 +167,22 @@ export const LeadershipSettingsPage: React.FC = () => {
     setCreatingTeam(true);
     setError('');
     setFeedback('');
+    const derivedLeadershipRole: LeadershipRole =
+      newRole === 'super_admin' ||
+      newRole === 'founder' ||
+      newRole === 'ceo' ||
+      newRole === 'director' ||
+      newRole === 'executive' ||
+      newRole === 'administrator'
+        ? newRole
+        : 'none';
     try {
       await leadershipApi.createTeamUser({
         name: newName.trim(),
         email: newEmail.trim(),
         password: newAccountPassword,
         role: newRole,
-        leadershipRole: newRole === 'founder' ? 'founder' : newRole === 'ceo' ? 'ceo' : 'none',
+        leadershipRole: derivedLeadershipRole,
       });
       setNewName('');
       setNewEmail('');
@@ -176,6 +193,48 @@ export const LeadershipSettingsPage: React.FC = () => {
       setError(err?.message || 'Unable to create account.');
     } finally {
       setCreatingTeam(false);
+    }
+  };
+
+  const startEditingMember = (member: LeadershipTeamMember) => {
+    setEditingMemberId(member.id);
+    setEditName(member.name);
+    setEditRole(member.role);
+    setEditLeadershipRole(member.leadershipRole);
+    setError('');
+    setFeedback('');
+  };
+
+  const handleSaveMemberEdit = async (e: React.FormEvent, member: LeadershipTeamMember) => {
+    e.preventDefault();
+    setSavingEdit(true);
+    setError('');
+    setFeedback('');
+    try {
+      const nextLeadership: LeadershipRole =
+        editRole === 'super_admin'
+          ? editLeadershipRole
+          : editRole === 'founder' ||
+              editRole === 'ceo' ||
+              editRole === 'director' ||
+              editRole === 'executive' ||
+              editRole === 'administrator'
+            ? editRole
+            : 'none';
+
+      await leadershipApi.updateTeamUser(member.id, {
+        name: editName.trim(),
+        role: member.id === user?.id ? member.role : editRole,
+        leadershipRole: nextLeadership,
+      });
+      setEditingMemberId(null);
+      await loadSettingsData();
+      await refreshSession();
+      setFeedback(`Updated executive account details for ${member.email}.`);
+    } catch (err: any) {
+      setError(err?.message || 'Unable to save executive account changes.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -202,7 +261,12 @@ export const LeadershipSettingsPage: React.FC = () => {
 
   const handleUpdateDesignation = async (
     member: LeadershipTeamMember,
-    patch: { leadershipRole?: LeadershipRole; customPermissions?: boolean; isActive?: boolean }
+    patch: {
+      role?: AdminRole;
+      leadershipRole?: LeadershipRole;
+      customPermissions?: boolean;
+      isActive?: boolean;
+    }
   ) => {
     setError('');
     setFeedback('');
@@ -228,6 +292,15 @@ export const LeadershipSettingsPage: React.FC = () => {
           {feedback}
         </div>
       )}
+
+      <FirebaseSyncPanel
+        mode="leadership"
+        canWriteWorkItems={
+          user?.role === 'super_admin' ||
+          user?.role === 'ceo' ||
+          user?.leadershipRole === 'ceo'
+        }
+      />
 
       {/* Password & 2FA Controls */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -424,15 +497,18 @@ export const LeadershipSettingsPage: React.FC = () => {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block font-medium text-slate-700">Role *</label>
+                <label className="block font-medium text-slate-700">Executive Role *</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as AdminRole)}
                   className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
                 >
+                  <option value="super_admin">Super Admin</option>
                   <option value="founder">Founder</option>
                   <option value="ceo">Co-Founder &amp; CEO</option>
-                  <option value="super_admin">Super Admin</option>
+                  <option value="director">Director</option>
+                  <option value="executive">Executive</option>
+                  <option value="administrator">Administrator</option>
                 </select>
               </div>
               <div className="md:col-span-2">
@@ -462,17 +538,22 @@ export const LeadershipSettingsPage: React.FC = () => {
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-sm font-semibold text-[#092F35]">
-                Leadership Role Mapping &amp; Granular Permissions
+                Executive Directory, Role Mapping &amp; Granular Permissions
               </h2>
             </div>
 
             <div className="divide-y divide-slate-200">
               {team.map((member) => {
                 const editablePerms = availablePermissions.filter((p) => p !== 'system.admin');
+                const isSelf = member.id === user?.id;
+                const isEditing = editingMemberId === member.id;
                 const isLeadershipMember =
+                  member.role === 'super_admin' ||
                   member.role === 'founder' ||
                   member.role === 'ceo' ||
-                  member.role === 'super_admin';
+                  member.role === 'director' ||
+                  member.role === 'executive' ||
+                  member.role === 'administrator';
 
                 return (
                   <div key={member.id} className="p-5 text-xs">
@@ -480,37 +561,151 @@ export const LeadershipSettingsPage: React.FC = () => {
                       <div>
                         <p className="text-sm font-semibold text-[#092F35]">
                           {member.name}{' '}
+                          {isSelf && (
+                            <span className="text-[11px] font-medium text-[#0F8A5F]">(You)</span>
+                          )}{' '}
                           <span className="font-normal text-slate-500">· {member.email}</span>
                         </p>
                         <p className="mt-0.5 text-slate-500 tabular-nums">
-                          Role: {member.role.replace(/_/g, ' ')} · Leadership Portal:{' '}
-                          {member.leadershipRole} · 2FA:{' '}
-                          {member.mfaEnabled ? 'Active' : 'Off'} · Last login:{' '}
+                          Role: {member.role.replace(/_/g, ' ')} · Portal Designation:{' '}
+                          {member.leadershipRole.replace(/_/g, ' ')} · Status:{' '}
+                          <span
+                            className={
+                              member.isActive
+                                ? 'font-medium text-emerald-700'
+                                : 'font-medium text-rose-700'
+                            }
+                          >
+                            {member.isActive ? 'Active' : 'Inactive'}
+                          </span>{' '}
+                          · 2FA: {member.mfaEnabled ? 'Active' : 'Off'} · Last login:{' '}
                           {formatAdminDate(member.lastLoginAt)}
                         </p>
                       </div>
 
-                      {member.role === 'super_admin' && (
-                        <select
-                          value={member.leadershipRole}
-                          onChange={(e) =>
-                            handleUpdateDesignation(member, {
-                              leadershipRole: e.target.value as LeadershipRole,
-                            })
+                      <div className="flex flex-wrap items-center gap-2">
+                        {member.role === 'super_admin' && (
+                          <select
+                            value={member.leadershipRole}
+                            onChange={(e) =>
+                              handleUpdateDesignation(member, {
+                                leadershipRole: e.target.value as LeadershipRole,
+                              })
+                            }
+                            aria-label={`Portal designation for ${member.email}`}
+                            className="rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                          >
+                            <option value="super_admin">Portal: Super Admin</option>
+                            <option value="ceo">Portal: Co-Founder &amp; CEO</option>
+                            <option value="founder">Portal: Founder</option>
+                            <option value="director">Portal: Director</option>
+                            <option value="executive">Portal: Executive</option>
+                            <option value="administrator">Portal: Administrator</option>
+                            <option value="none">No Leadership Portal Role</option>
+                          </select>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            isEditing ? setEditingMemberId(null) : startEditingMember(member)
                           }
-                          aria-label={`Portal designation for ${member.email}`}
-                          className="rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                          className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
-                          <option value="none">No Leadership Portal Role</option>
-                          <option value="ceo">Authorised: Co-Founder &amp; CEO</option>
-                          <option value="founder">Authorised: Founder</option>
-                        </select>
-                      )}
+                          {isEditing ? 'Cancel' : 'Edit'}
+                        </button>
+
+                        {!isSelf && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateDesignation(member, { isActive: !member.isActive })
+                            }
+                            className={`rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+                              member.isActive
+                                ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
+                                : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                            }`}
+                          >
+                            {member.isActive ? 'Deactivate' : 'Reactivate'}
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {isEditing && (
+                      <form
+                        onSubmit={(e) => handleSaveMemberEdit(e, member)}
+                        className="mt-4 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-12"
+                      >
+                        <div className="sm:col-span-4">
+                          <label className="block font-medium text-slate-700">Full Name</label>
+                          <input
+                            type="text"
+                            required
+                            minLength={2}
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs"
+                          />
+                        </div>
+                        <div className="sm:col-span-4">
+                          <label className="block font-medium text-slate-700">Assigned Role</label>
+                          <select
+                            disabled={isSelf}
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value as AdminRole)}
+                            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs disabled:bg-slate-100"
+                          >
+                            <option value="super_admin">Super Admin</option>
+                            <option value="founder">Founder</option>
+                            <option value="ceo">Co-Founder &amp; CEO</option>
+                            <option value="director">Director</option>
+                            <option value="executive">Executive</option>
+                            <option value="administrator">Administrator</option>
+                            <option value="content_manager">Content Manager</option>
+                            <option value="support_manager">Support Manager</option>
+                          </select>
+                        </div>
+                        {editRole === 'super_admin' && (
+                          <div className="sm:col-span-2">
+                            <label className="block font-medium text-slate-700">Designation</label>
+                            <select
+                              value={editLeadershipRole}
+                              onChange={(e) =>
+                                setEditLeadershipRole(e.target.value as LeadershipRole)
+                              }
+                              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                            >
+                              <option value="super_admin">Super Admin</option>
+                              <option value="ceo">Co-Founder &amp; CEO</option>
+                              <option value="founder">Founder</option>
+                              <option value="director">Director</option>
+                              <option value="executive">Executive</option>
+                              <option value="administrator">Administrator</option>
+                              <option value="none">None</option>
+                            </select>
+                          </div>
+                        )}
+                        <div
+                          className={`flex items-end ${
+                            editRole === 'super_admin' ? 'sm:col-span-2' : 'sm:col-span-4'
+                          }`}
+                        >
+                          <button
+                            type="submit"
+                            disabled={savingEdit}
+                            className="w-full rounded-lg bg-[#0F8A5F] px-3 py-1.5 font-semibold text-white hover:bg-[#0B5D4B] disabled:opacity-50"
+                          >
+                            {savingEdit ? 'Saving...' : 'Save Changes'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
 
                     {isLeadershipMember && member.role !== 'super_admin' && (
                       <div className="mt-4 border-t border-slate-100 pt-3">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="mb-2 flex items-center justify-between">
                           <span className="font-medium text-slate-700">
                             Assigned Permissions (
                             {member.customPermissions ? 'Custom' : 'Role Default'})

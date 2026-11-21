@@ -12,6 +12,7 @@ import { adminOpsRouter } from './routes/adminOpsRoutes.ts';
 import { leadershipAuthRouter } from './routes/leadershipAuthRoutes.ts';
 import { leadershipRouter } from './routes/leadershipRoutes.ts';
 import { publicRouter } from './routes/publicRoutes.ts';
+import { verifySameOriginForMutations } from './middleware/auth.ts';
 
 export function createExpressApp(options?: { dbPath?: string }) {
   const db = getDb(options?.dbPath);
@@ -32,7 +33,7 @@ export function createExpressApp(options?: { dbPath?: string }) {
   });
 
   // Never allow reverse proxies or browsers to cache authenticated auth/session/workspace endpoints
-  app.use(['/api/admin', '/api/leadership'], (_req, res, next) => {
+  app.use(['/api/admin', '/api/leadership'], verifySameOriginForMutations, (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, private');
     res.setHeader('Vary', 'Cookie');
     next();

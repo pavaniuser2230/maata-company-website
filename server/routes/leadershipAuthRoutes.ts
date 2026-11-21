@@ -30,17 +30,29 @@ import {
   requireLeadershipAccess,
   type AdminRequest,
 } from '../middleware/auth.ts';
+import { getInitialSetupState } from './adminAuthRoutes.ts';
 
 export const leadershipAuthRouter = Router();
 
 const leadershipAuthLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  maxRequests: 15,
+  maxRequests: 25,
   message: 'Too many Private Leadership Access attempts. Please wait before trying again.',
 });
 
+leadershipAuthRouter.get('/setup-status', (_req, res) => {
+  res.json(getInitialSetupState());
+});
+
 const leadershipLoginSchema = z.object({
-  selectedRole: z.enum(['founder', 'ceo']),
+  selectedRole: z.enum([
+    'super_admin',
+    'founder',
+    'ceo',
+    'director',
+    'executive',
+    'administrator',
+  ]),
   email: z.string().trim().email(),
   password: z.string().min(1),
   totpCode: z.string().trim().optional(),

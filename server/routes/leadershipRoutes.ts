@@ -707,8 +707,19 @@ const createTeamUserSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(160),
   password: z.string().min(10).max(128),
-  role: z.enum(['super_admin', 'founder', 'ceo', 'content_manager', 'support_manager']),
-  leadershipRole: z.enum(['founder', 'ceo', 'none']).optional(),
+  role: z.enum([
+    'super_admin',
+    'founder',
+    'ceo',
+    'director',
+    'executive',
+    'administrator',
+    'content_manager',
+    'support_manager',
+  ]),
+  leadershipRole: z
+    .enum(['super_admin', 'founder', 'ceo', 'director', 'executive', 'administrator', 'none'])
+    .optional(),
 });
 
 leadershipRouter.post('/team', requireRole(['super_admin']), (req: AdminRequest, res) => {
@@ -732,9 +743,10 @@ leadershipRouter.post('/team', requireRole(['super_admin']), (req: AdminRequest,
   }
 
   const id = crypto.randomUUID();
+  const defaultLeadershipForSuper = parsed.data.role === 'super_admin' ? 'super_admin' : 'none';
   const effectiveLeadershipRole = resolveLeadershipRole(
     parsed.data.role,
-    parsed.data.leadershipRole || 'none'
+    parsed.data.leadershipRole || defaultLeadershipForSuper
   );
 
   db.prepare(`
@@ -770,8 +782,22 @@ leadershipRouter.post('/team', requireRole(['super_admin']), (req: AdminRequest,
 });
 
 const patchTeamUserSchema = z.object({
-  role: z.enum(['super_admin', 'founder', 'ceo', 'content_manager', 'support_manager']).optional(),
-  leadershipRole: z.enum(['founder', 'ceo', 'none']).optional(),
+  name: z.string().trim().min(2).max(100).optional(),
+  role: z
+    .enum([
+      'super_admin',
+      'founder',
+      'ceo',
+      'director',
+      'executive',
+      'administrator',
+      'content_manager',
+      'support_manager',
+    ])
+    .optional(),
+  leadershipRole: z
+    .enum(['super_admin', 'founder', 'ceo', 'director', 'executive', 'administrator', 'none'])
+    .optional(),
   customPermissions: z.boolean().optional(),
   permissions: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
@@ -780,16 +806,17 @@ const patchTeamUserSchema = z.object({
 leadershipRouter.patch('/team/:id', requireRole(['super_admin']), (req: AdminRequest, res) => {
   const parsed = patchTeamUserSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: 'Invalid permission update payload.' });
+    res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid account update payload.' });
     return;
   }
 
   const db = getDb();
   const target = db
-    .prepare('SELECT id, email, role, leadership_role, custom_permissions, permissions_json, is_active FROM admin_users WHERE id = ?')
+    .prepare('SELECT id, name, email, role, leadership_role, custom_permissions, permissions_json, is_active FROM admin_users WHERE id = ?')
     .get(req.params.id) as
     | {
         id: string;
+        name: string;
         email: string;
         role: AdminRole;
         leadership_role: string;
@@ -812,6 +839,7 @@ leadershipRouter.patch('/team/:id', requireRole(['super_admin']), (req: AdminReq
     return;
   }
 
+  const nextName = parsed.data.name ?? target.name;
   const nextRole = (parsed.data.role ?? target.role) as AdminRole;
   const nextLeadershipRole = resolveLeadershipRole(
     nextRole,
@@ -835,9 +863,10 @@ leadershipRouter.patch('/team/:id', requireRole(['super_admin']), (req: AdminReq
 
   db.prepare(`
     UPDATE admin_users
-    SET role = ?, leadership_role = ?, custom_permissions = ?, permissions_json = ?, is_active = ?, updated_at = datetime('now')
+    SET name = ?, role = ?, leadership_role = ?, custom_permissions = ?, permissions_json = ?, is_active = ?, updated_at = datetime('now')
     WHERE id = ?
   `).run(
+    nextName,
     nextRole,
     nextLeadershipRole,
     nextCustom,
@@ -859,6 +888,7 @@ leadershipRouter.patch('/team/:id', requireRole(['super_admin']), (req: AdminReq
     resourceId: req.params.id,
     details: {
       email: target.email,
+      nextName,
       nextRole,
       nextLeadershipRole,
       nextCustom: nextCustom === 1,

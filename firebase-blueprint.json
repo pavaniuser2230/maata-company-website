@@ -1,0 +1,703 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorised MAATA Technologies CMS administrator or leadership account linked to Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string",
+          "enum": ["super_admin", "founder", "ceo", "content_manager", "support_manager"]
+        },
+        "leadershipRole": {
+          "type": "string",
+          "enum": ["founder", "ceo", "none"]
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "leadershipRole", "isActive", "createdAt", "updatedAt"]
+    },
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Non-PII public profile metadata for authenticated workspace users.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["member", "content_manager", "support_manager", "founder", "ceo", "super_admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "UserPrivatePii": {
+      "title": "UserPrivatePii",
+      "description": "Isolated PII record for a user, restricted strictly to account owner and admins.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "CompanySection": {
+      "title": "CompanySection",
+      "description": "Corporate website section content with draft/published lifecycle and native map payload.",
+      "type": "object",
+      "properties": {
+        "sectionKey": {
+          "type": "string",
+          "enum": ["about", "story", "founders", "vision_mission", "journey", "careers", "contact"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "published"]
+        },
+        "content": {
+          "type": "object"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["sectionKey", "title", "status", "content", "ownerId", "createdAt", "updatedAt"]
+    },
+    "Article": {
+      "title": "Article",
+      "description": "Newsroom article synced to Firestore.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 220
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 200,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "coverImageUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "shortSummary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 600
+        },
+        "content": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 40000
+        },
+        "author": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Announcements", "Product Updates", "Company News", "Articles & Insights", "Featured Stories"]
+        },
+        "tags": {
+          "type": "array"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "scheduled", "published", "unpublished"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "slug", "shortSummary", "content", "author", "category", "tags", "status", "ownerId", "createdAt", "updatedAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Corporate announcement or website banner.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["company_announcement", "product_update", "new_feature", "service_notification", "important_notice"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 600
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public", "hidden"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "scheduled", "published", "archived"]
+        },
+        "isPinned": {
+          "type": "boolean"
+        },
+        "showAsBanner": {
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "kind", "title", "summary", "visibility", "status", "isPinned", "showAsBanner", "ownerId", "createdAt", "updatedAt"]
+    },
+    "MediaAsset": {
+      "title": "MediaAsset",
+      "description": "Approved brand media, Founder Gallery item, or article image metadata.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "category": {
+          "type": "string",
+          "enum": ["company_logo", "founder_photo", "founder_gallery", "product_screenshot", "article_cover", "banner", "approved_media"]
+        },
+        "altText": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 250
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "focalPosition": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "displayOrder": {
+          "type": "number"
+        },
+        "isProtected": {
+          "type": "boolean"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "filename", "url", "category", "altText", "isProtected", "isPublic", "ownerId", "createdAt", "updatedAt"]
+    },
+    "CmsTranslation": {
+      "title": "CmsTranslation",
+      "description": "Localized CMS content record for one of the 9 Indic target languages.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "enum": ["company_section", "article", "announcement", "media_asset"]
+        },
+        "entityId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "locale": {
+          "type": "string",
+          "enum": ["te", "hi", "ta", "kn", "ml", "bn", "mr", "gu", "pa"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "published"]
+        },
+        "content": {
+          "type": "object"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["entityType", "entityId", "locale", "status", "content", "ownerId", "createdAt", "updatedAt"]
+    },
+    "Enquiry": {
+      "title": "Enquiry",
+      "description": "Public contact, partnership, career, or feedback submission with strict PII protection.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["general", "business", "partnership", "careers", "feedback"]
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "organisation": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "subjectContext": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 4000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_review", "resolved", "archived"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "type", "fullName", "email", "message", "status", "ownerId", "createdAt", "updatedAt"]
+    },
+    "LeadershipWorkItem": {
+      "title": "LeadershipWorkItem",
+      "description": "Confidential leadership roadmap item across product, marketing, or testing domains.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "domain": {
+          "type": "string",
+          "enum": ["product", "marketing", "testing"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "ownerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in_progress", "in_review", "completed", "blocked"]
+        },
+        "progressPct": {
+          "type": "number"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "domain", "title", "priority", "status", "progressPct", "ownerId", "createdAt", "updatedAt"]
+    },
+    "LeadershipReport": {
+      "title": "LeadershipReport",
+      "description": "Executive report restricted to Founder, Co-Founder & CEO, and Super Admin.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "reportType": {
+          "type": "string",
+          "enum": ["executive_summary", "operations", "merchant_growth", "financial", "product_metrics"]
+        },
+        "periodLabel": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 5000
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "final"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "reportType", "summary", "authorName", "status", "ownerId", "createdAt", "updatedAt"]
+    },
+    "LeadershipDocument": {
+      "title": "LeadershipDocument",
+      "description": "Confidential governance or strategy record accessible exclusively to verified leadership.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "enum": ["governance", "strategy", "product_spec", "marketing_plan", "legal_compliance", "financial", "meeting_notes"]
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 25000
+        },
+        "classification": {
+          "type": "string",
+          "enum": ["leadership_only", "executive_confidential"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "category", "classification", "ownerId", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security and CMS audit trail entry.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorEmail": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "resourceType": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "resourceId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "actorUid", "actorEmail", "action", "resourceType", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Authorised MAATA CMS and leadership user directory keyed by Firebase Auth UID."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfile" },
+      "description": "Non-PII user display profile."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivatePii" },
+      "description": "Isolated user PII subcollection restricted to account owner and admins."
+    },
+    "/companySections/{sectionKey}": {
+      "schema": { "$ref": "#/entities/CompanySection" },
+      "description": "Corporate page content sections synced with CMS."
+    },
+    "/articles/{articleId}": {
+      "schema": { "$ref": "#/entities/Article" },
+      "description": "Newsroom articles with published/draft visibility."
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Corporate announcements and website alert banners."
+    },
+    "/mediaAssets/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaAsset" },
+      "description": "Approved brand assets and Founder Gallery metadata."
+    },
+    "/cmsTranslations/{translationId}": {
+      "schema": { "$ref": "#/entities/CmsTranslation" },
+      "description": "Published/draft localized CMS overrides across 9 Indian languages."
+    },
+    "/enquiries/{enquiryId}": {
+      "schema": { "$ref": "#/entities/Enquiry" },
+      "description": "Contact and feedback enquiries containing PII, protected from public reads."
+    },
+    "/leadershipWorkItems/{itemId}": {
+      "schema": { "$ref": "#/entities/LeadershipWorkItem" },
+      "description": "Confidential executive roadmap items (Founder read-only, CEO/Super Admin write)."
+    },
+    "/leadershipReports/{reportId}": {
+      "schema": { "$ref": "#/entities/LeadershipReport" },
+      "description": "Confidential leadership reports."
+    },
+    "/leadershipDocuments/{docId}": {
+      "schema": { "$ref": "#/entities/LeadershipDocument" },
+      "description": "Confidential company governance and strategy documents."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Append-only security and CMS audit trail."
+    }
+  }
+}

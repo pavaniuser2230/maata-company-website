@@ -1,0 +1,569 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net — default deny everything not explicitly permitted
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isBootstrapAdmin() {
+      return isVerifiedUser()
+        && request.auth.token.email == 'gurrampavani2006@gmail.com';
+    }
+
+    function hasAdminDoc() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function adminDoc() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data;
+    }
+
+    function isActiveAdminRecord() {
+      return isVerifiedUser() && hasAdminDoc() && adminDoc().isActive == true;
+    }
+
+    function isSuperAdmin() {
+      return isBootstrapAdmin()
+        || (isActiveAdminRecord() && adminDoc().role == 'super_admin');
+    }
+
+    function isAdmin() {
+      return isSuperAdmin();
+    }
+
+    function isCmsEditor() {
+      return isSuperAdmin()
+        || (isActiveAdminRecord() && adminDoc().role in ['ceo', 'content_manager']);
+    }
+
+    function isSupportStaff() {
+      return isSuperAdmin()
+        || (isActiveAdminRecord() && adminDoc().role in ['ceo', 'founder', 'support_manager']);
+    }
+
+    function isLeadershipMember() {
+      return isSuperAdmin()
+        || (isActiveAdminRecord() && (
+          adminDoc().role in ['founder', 'ceo'] ||
+          adminDoc().leadershipRole in ['founder', 'ceo']
+        ));
+    }
+
+    function isLeadershipEditor() {
+      return isSuperAdmin()
+        || (isActiveAdminRecord() && (
+          adminDoc().role == 'ceo' ||
+          adminDoc().leadershipRole == 'ceo'
+        ));
+    }
+
+    function isBoundedStr(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isStringList(arr, maxItems) {
+      return arr is list
+        && arr.size() <= maxItems
+        && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= 80));
+    }
+
+    // --- Validation Blueprints (Phase 3 / Anti-Update-Gap) ---
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'leadershipRole', 'isActive', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'email', 'role', 'leadershipRole', 'isActive', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && isBoundedStr(data.name, 2, 120)
+        && isBoundedStr(data.email, 5, 160)
+        && data.role in ['super_admin', 'founder', 'ceo', 'content_manager', 'support_manager']
+        && data.leadershipRole in ['founder', 'ceo', 'none']
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPublic(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && isBoundedStr(data.displayName, 2, 120)
+        && data.role in ['member', 'content_manager', 'support_manager', 'founder', 'ceo', 'super_admin']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'phone', 'updatedAt'])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && isBoundedStr(data.email, 5, 160)
+        && (!('phone' in data) || isBoundedStr(data.phone, 0, 32))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCompanySection(data) {
+      return data.keys().hasAll(['sectionKey', 'title', 'status', 'content', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['sectionKey', 'title', 'status', 'content', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.sectionKey in ['about', 'story', 'founders', 'vision_mission', 'journey', 'careers', 'contact']
+        && isBoundedStr(data.title, 2, 160)
+        && data.status in ['draft', 'published']
+        && data.content is map
+        && data.content.size() <= 50
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidArticle(data) {
+      return data.keys().hasAll(['id', 'title', 'slug', 'shortSummary', 'content', 'author', 'category', 'tags', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'slug', 'coverImageUrl', 'shortSummary', 'content', 'author', 'category', 'tags', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isBoundedStr(data.title, 3, 220)
+        && isBoundedStr(data.slug, 2, 200)
+        && (!('coverImageUrl' in data) || isBoundedStr(data.coverImageUrl, 0, 500))
+        && isBoundedStr(data.shortSummary, 10, 600)
+        && isBoundedStr(data.content, 10, 40000)
+        && isBoundedStr(data.author, 2, 120)
+        && data.category in ['Announcements', 'Product Updates', 'Company News', 'Articles & Insights', 'Featured Stories']
+        && isStringList(data.tags, 10)
+        && data.status in ['draft', 'scheduled', 'published', 'unpublished']
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['id', 'kind', 'title', 'summary', 'visibility', 'status', 'isPinned', 'showAsBanner', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'kind', 'title', 'summary', 'body', 'visibility', 'status', 'isPinned', 'showAsBanner', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.kind in ['company_announcement', 'product_update', 'new_feature', 'service_notification', 'important_notice']
+        && isBoundedStr(data.title, 3, 200)
+        && isBoundedStr(data.summary, 5, 600)
+        && (!('body' in data) || isBoundedStr(data.body, 0, 8000))
+        && data.visibility in ['public', 'hidden']
+        && data.status in ['draft', 'scheduled', 'published', 'archived']
+        && data.isPinned is bool
+        && data.showAsBanner is bool
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMediaAsset(data) {
+      return data.keys().hasAll(['id', 'filename', 'url', 'category', 'altText', 'isProtected', 'isPublic', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'filename', 'url', 'category', 'altText', 'caption', 'focalPosition', 'displayOrder', 'isProtected', 'isPublic', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isBoundedStr(data.filename, 1, 200)
+        && isBoundedStr(data.url, 1, 500)
+        && data.category in ['company_logo', 'founder_photo', 'founder_gallery', 'product_screenshot', 'article_cover', 'banner', 'approved_media']
+        && isBoundedStr(data.altText, 2, 250)
+        && (!('caption' in data) || isBoundedStr(data.caption, 0, 300))
+        && (!('focalPosition' in data) || isBoundedStr(data.focalPosition, 0, 40))
+        && (!('displayOrder' in data) || (data.displayOrder is number && data.displayOrder >= 0 && data.displayOrder <= 9999))
+        && data.isProtected is bool
+        && data.isPublic is bool
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCmsTranslation(data) {
+      return data.keys().hasAll(['entityType', 'entityId', 'locale', 'status', 'content', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['entityType', 'entityId', 'locale', 'status', 'content', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.entityType in ['company_section', 'article', 'announcement', 'media_asset']
+        && isValidId(data.entityId)
+        && data.locale in ['te', 'hi', 'ta', 'kn', 'ml', 'bn', 'mr', 'gu', 'pa']
+        && data.status in ['draft', 'published']
+        && data.content is map
+        && data.content.size() <= 50
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEnquiry(data) {
+      return data.keys().hasAll(['id', 'type', 'fullName', 'email', 'message', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'type', 'fullName', 'email', 'organisation', 'subjectContext', 'message', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.type in ['general', 'business', 'partnership', 'careers', 'feedback']
+        && isBoundedStr(data.fullName, 2, 120)
+        && isBoundedStr(data.email, 5, 160)
+        && (!('organisation' in data) || isBoundedStr(data.organisation, 0, 160))
+        && (!('subjectContext' in data) || isBoundedStr(data.subjectContext, 0, 200))
+        && isBoundedStr(data.message, 5, 4000)
+        && data.status in ['pending', 'in_review', 'resolved', 'archived']
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLeadershipWorkItem(data) {
+      return data.keys().hasAll(['id', 'domain', 'title', 'priority', 'status', 'progressPct', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'domain', 'title', 'category', 'summary', 'ownerName', 'priority', 'status', 'progressPct', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.domain in ['product', 'marketing', 'testing']
+        && isBoundedStr(data.title, 3, 200)
+        && (!('category' in data) || isBoundedStr(data.category, 0, 100))
+        && (!('summary' in data) || isBoundedStr(data.summary, 0, 2000))
+        && (!('ownerName' in data) || isBoundedStr(data.ownerName, 0, 120))
+        && data.priority in ['high', 'medium', 'low']
+        && data.status in ['planned', 'in_progress', 'in_review', 'completed', 'blocked']
+        && data.progressPct is number && data.progressPct >= 0 && data.progressPct <= 100
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLeadershipReport(data) {
+      return data.keys().hasAll(['id', 'title', 'reportType', 'summary', 'authorName', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'reportType', 'periodLabel', 'summary', 'authorName', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isBoundedStr(data.title, 3, 200)
+        && data.reportType in ['executive_summary', 'operations', 'merchant_growth', 'financial', 'product_metrics']
+        && (!('periodLabel' in data) || isBoundedStr(data.periodLabel, 0, 80))
+        && isBoundedStr(data.summary, 5, 5000)
+        && isBoundedStr(data.authorName, 2, 120)
+        && data.status in ['draft', 'final']
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLeadershipDocument(data) {
+      return data.keys().hasAll(['id', 'title', 'category', 'classification', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'category', 'summary', 'content', 'classification', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isBoundedStr(data.title, 3, 200)
+        && data.category in ['governance', 'strategy', 'product_spec', 'marketing_plan', 'legal_compliance', 'financial', 'meeting_notes']
+        && (!('summary' in data) || isBoundedStr(data.summary, 0, 1000))
+        && (!('content' in data) || isBoundedStr(data.content, 0, 25000))
+        && data.classification in ['leadership_only', 'executive_confidential']
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'actorUid', 'actorEmail', 'action', 'resourceType', 'createdAt'])
+        && data.keys().hasOnly(['id', 'actorUid', 'actorEmail', 'action', 'resourceType', 'resourceId', 'createdAt'])
+        && isValidId(data.id)
+        && isValidId(data.actorUid)
+        && isBoundedStr(data.actorEmail, 5, 160)
+        && isBoundedStr(data.action, 2, 100)
+        && isBoundedStr(data.resourceType, 2, 80)
+        && (!('resourceId' in data) || isBoundedStr(data.resourceId, 0, 128))
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // Health connection check document (no PII)
+    match /test/connection {
+      allow get: if isSignedIn();
+      allow list, write: if false;
+    }
+
+    // Authorised Admins & Leadership Directory (RBAC Source of Truth)
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isSuperAdmin());
+      allow list: if isSuperAdmin();
+      allow create: if isValidId(adminId)
+        && isSuperAdmin()
+        && isValidAdminUser(incoming())
+        && incoming().uid == adminId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(adminId)
+        && isSuperAdmin()
+        && isValidAdminUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'role', 'leadershipRole', 'isActive', 'updatedAt']);
+      allow delete: if isValidId(adminId) && isSuperAdmin() && adminId != request.auth.uid;
+    }
+
+    // User Profiles & Split PII Subcollection (Pillar 6)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPublic(incoming(), userId)
+        && incoming().role == 'member'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isValidUserPublic(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'updatedAt'])) ||
+          (isOwner(userId) && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isValidId(userId) && isValidId(docId)
+          && (isOwner(userId) || isAdmin())
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && isValidId(docId)
+          && (isOwner(userId) || isAdmin())
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'phone', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // Corporate Sections (Published visible to public, drafts restricted to CMS editors)
+    match /companySections/{sectionKey} {
+      allow get: if isValidId(sectionKey) && (existing().status == 'published' || isCmsEditor());
+      allow list: if existing().status == 'published' || isCmsEditor();
+      allow create: if isValidId(sectionKey)
+        && isCmsEditor()
+        && isValidCompanySection(incoming())
+        && incoming().sectionKey == sectionKey
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(sectionKey)
+        && isCmsEditor()
+        && isValidCompanySection(incoming())
+        && incoming().sectionKey == existing().sectionKey
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'status', 'content', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Newsroom Articles
+    match /articles/{articleId} {
+      allow get: if isValidId(articleId) && (existing().status == 'published' || isCmsEditor());
+      allow list: if existing().status == 'published' || isCmsEditor();
+      allow create: if isValidId(articleId)
+        && isCmsEditor()
+        && isValidArticle(incoming())
+        && incoming().id == articleId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(articleId)
+        && isCmsEditor()
+        && isValidArticle(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'slug', 'coverImageUrl', 'shortSummary', 'content', 'author', 'category', 'tags', 'status', 'updatedAt']);
+      allow delete: if isValidId(articleId) && isCmsEditor();
+    }
+
+    // Corporate Announcements & Website Banners
+    match /announcements/{announcementId} {
+      allow get: if isValidId(announcementId) && ((existing().status == 'published' && existing().visibility == 'public') || isCmsEditor());
+      allow list: if (existing().status == 'published' && existing().visibility == 'public') || isCmsEditor();
+      allow create: if isValidId(announcementId)
+        && isCmsEditor()
+        && isValidAnnouncement(incoming())
+        && incoming().id == announcementId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(announcementId)
+        && isCmsEditor()
+        && isValidAnnouncement(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['kind', 'title', 'summary', 'body', 'visibility', 'status', 'isPinned', 'showAsBanner', 'updatedAt']);
+      allow delete: if isValidId(announcementId) && isCmsEditor();
+    }
+
+    // Media Assets & Founder Gallery (Protected brand assets cannot be deleted)
+    match /mediaAssets/{mediaId} {
+      allow get: if isValidId(mediaId) && (existing().isPublic == true || isCmsEditor());
+      allow list: if existing().isPublic == true || isCmsEditor();
+      allow create: if isValidId(mediaId)
+        && isCmsEditor()
+        && isValidMediaAsset(incoming())
+        && incoming().id == mediaId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(mediaId)
+        && isCmsEditor()
+        && isValidMediaAsset(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().isProtected == existing().isProtected
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (existing().isProtected == false || incoming().category == existing().category)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['filename', 'url', 'category', 'altText', 'caption', 'focalPosition', 'displayOrder', 'isPublic', 'updatedAt']);
+      allow delete: if isValidId(mediaId) && isCmsEditor() && existing().isProtected == false;
+    }
+
+    // Multilingual CMS Translations
+    match /cmsTranslations/{translationId} {
+      allow get: if isValidId(translationId) && (existing().status == 'published' || isCmsEditor());
+      allow list: if existing().status == 'published' || isCmsEditor();
+      allow create: if isValidId(translationId)
+        && isCmsEditor()
+        && isValidCmsTranslation(incoming())
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(translationId)
+        && isCmsEditor()
+        && isValidCmsTranslation(incoming())
+        && incoming().entityType == existing().entityType
+        && incoming().entityId == existing().entityId
+        && incoming().locale == existing().locale
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'content', 'updatedAt']);
+      allow delete: if isValidId(translationId) && isCmsEditor();
+    }
+
+    // Enquiries & Feedback (Strict PII Isolation: never public read/list)
+    match /enquiries/{enquiryId} {
+      allow get: if isValidId(enquiryId) && (isOwner(existing().ownerId) || isSupportStaff());
+      allow list: if isSupportStaff() || (isVerifiedUser() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(enquiryId)
+        && isVerifiedUser()
+        && isValidEnquiry(incoming())
+        && incoming().id == enquiryId
+        && incoming().ownerId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(enquiryId)
+        && isSupportStaff()
+        && isValidEnquiry(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isValidId(enquiryId) && isSuperAdmin();
+    }
+
+    // Confidential Leadership Work Items (Founder read-only, CEO/Super Admin write)
+    match /leadershipWorkItems/{itemId} {
+      allow get: if isValidId(itemId) && isLeadershipMember();
+      allow list: if isLeadershipMember();
+      allow create: if isValidId(itemId)
+        && isLeadershipEditor()
+        && isValidLeadershipWorkItem(incoming())
+        && incoming().id == itemId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(itemId)
+        && isLeadershipEditor()
+        && isValidLeadershipWorkItem(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['domain', 'title', 'category', 'summary', 'ownerName', 'priority', 'status', 'progressPct', 'updatedAt']);
+      allow delete: if isValidId(itemId) && isLeadershipEditor();
+    }
+
+    // Confidential Leadership Reports (Founder + CEO + Super Admin)
+    match /leadershipReports/{reportId} {
+      allow get: if isValidId(reportId) && isLeadershipMember();
+      allow list: if isLeadershipMember();
+      allow create: if isValidId(reportId)
+        && isLeadershipMember()
+        && isValidLeadershipReport(incoming())
+        && incoming().id == reportId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(reportId)
+        && isLeadershipMember()
+        && isValidLeadershipReport(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (existing().status != 'final' || isAdmin())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'reportType', 'periodLabel', 'summary', 'authorName', 'status', 'updatedAt']);
+      allow delete: if isValidId(reportId) && isSuperAdmin();
+    }
+
+    // Confidential Leadership Documents (Strictly locked behind Leadership RBAC)
+    match /leadershipDocuments/{docId} {
+      allow get: if isValidId(docId) && isLeadershipMember();
+      allow list: if isLeadershipMember();
+      allow create: if isValidId(docId)
+        && isLeadershipMember()
+        && isValidLeadershipDocument(incoming())
+        && incoming().id == docId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(docId)
+        && isLeadershipMember()
+        && isValidLeadershipDocument(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'summary', 'content', 'classification', 'updatedAt']);
+      allow delete: if isValidId(docId) && isLeadershipMember();
+    }
+
+    // Immutable Security & CMS Audit Logs
+    match /auditLogs/{logId} {
+      allow get: if isValidId(logId) && isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isValidId(logId)
+        && (isCmsEditor() || isSupportStaff() || isLeadershipMember())
+        && isValidAuditLog(incoming())
+        && incoming().id == logId
+        && incoming().actorUid == request.auth.uid
+        && incoming().actorEmail == request.auth.token.email
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

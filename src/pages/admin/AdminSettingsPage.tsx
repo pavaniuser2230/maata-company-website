@@ -9,6 +9,7 @@ import {
   PreviewModal,
   StatusBadge,
 } from '../../components/admin/AdminUi';
+import { FirebaseSyncPanel } from '../../components/admin/FirebaseSyncPanel';
 
 export const AdminSettingsPage: React.FC = () => {
   const { user } = useAdminAuth();
@@ -381,6 +382,8 @@ export const AdminSettingsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <FirebaseSyncPanel mode="cms" />
 
       <PreviewModal
         open={previewOpen}

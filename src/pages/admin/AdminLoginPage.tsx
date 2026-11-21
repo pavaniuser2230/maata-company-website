@@ -8,15 +8,17 @@ import { adminApi, type LeadershipRole } from '../../services/cmsApi';
 type AuthMode = 'login' | 'forgot' | 'reset';
 
 export const AdminLoginPage: React.FC = () => {
-  const { user, loading, needsInitialSetup, login, setupInitialAdmin } = useAdminAuth();
+  const { user, loading, needsInitialSetup, requiresSetupToken, login, setupInitialAdmin } =
+    useAdminAuth();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<AuthMode>('login');
-  const [name, setName] = useState('G. Pavani');
+  const [name, setName] = useState('');
   const [leadershipRole, setLeadershipRole] = useState<LeadershipRole>('ceo');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [setupToken, setSetupToken] = useState('');
   const [totpCode, setTotpCode] = useState('');
   const [mfaStep, setMfaStep] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,10 +51,25 @@ export const AdminLoginPage: React.FC = () => {
       setError('Passwords do not match.');
       return;
     }
+    if (requiresSetupToken && !setupToken.trim()) {
+      setError('Enter the server-side Setup Authorization Key configured for this environment.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await setupInitialAdmin(name.trim(), email.trim(), password, leadershipRole);
-      navigate('/admin', { replace: true });
+      await setupInitialAdmin(name.trim(), email.trim(), password, leadershipRole, {
+        confirmPassword,
+        setupToken: requiresSetupToken ? setupToken.trim() : undefined,
+        autoSignIn: false,
+      });
+      navigate('/leadership/access', {
+        replace: true,
+        state: {
+          setupSuccess:
+            'Initial Super Admin account created. Public setup is now permanently locked. Sign in with your verified credentials.',
+          prefillEmail: email.trim().toLowerCase(),
+        },
+      });
     } catch (err: any) {
       setError(err?.message || 'Unable to create initial Super Admin.');
     } finally {
@@ -191,10 +208,8 @@ export const AdminLoginPage: React.FC = () => {
             {needsInitialSetup ? (
               <form onSubmit={handleSetupSubmit} className="space-y-4">
                 <p className="rounded-lg border border-[#0F8A5F]/25 bg-[#F7F4EC] p-3 text-xs leading-relaxed text-slate-700">
-                  Initial administrator setup for <strong>G. Pavani (Co-Founder &amp; CEO)</strong>.
-                  This one-time registration assigns the full-access{' '}
-                  <span className="font-mono font-semibold">super_admin</span> role and locks
-                  permanently once created.
+                  Register the primary <strong>MAATA Technologies Super Admin</strong> account. This
+                  one-time setup permanently locks public registration once completed.
                 </p>
 
                 <div>
@@ -207,7 +222,7 @@ export const AdminLoginPage: React.FC = () => {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="G. Pavani"
+                    placeholder="Enter executive full name"
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:border-[#0F4C5C] focus:outline-none"
                   />
                 </div>
@@ -222,15 +237,19 @@ export const AdminLoginPage: React.FC = () => {
                     onChange={(e) => setLeadershipRole(e.target.value as LeadershipRole)}
                     className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-[#0F4C5C] focus:outline-none"
                   >
-                    <option value="ceo">Co-Founder &amp; CEO (G. Pavani)</option>
-                    <option value="founder">Founder (G. Balaji Reddy)</option>
-                    <option value="none">System Administrator Only</option>
+                    <option value="super_admin">Super Admin</option>
+                    <option value="ceo">Co-Founder &amp; CEO</option>
+                    <option value="founder">Founder</option>
+                    <option value="director">Director</option>
+                    <option value="executive">Executive</option>
+                    <option value="administrator">Administrator</option>
+                    <option value="none">CMS Administrator Only</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700" htmlFor="setup-email">
-                    Administrator Email
+                    Official Email
                   </label>
                   <input
                     id="setup-email"
@@ -238,10 +257,27 @@ export const AdminLoginPage: React.FC = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@maataapp.com"
+                    placeholder="executive@maataapp.com"
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:border-[#0F4C5C] focus:outline-none"
                   />
                 </div>
+
+                {requiresSetupToken && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700" htmlFor="setup-token">
+                      Server Setup Authorization Key
+                    </label>
+                    <input
+                      id="setup-token"
+                      type="password"
+                      required
+                      value={setupToken}
+                      onChange={(e) => setSetupToken(e.target.value)}
+                      placeholder="Enter configured setup key"
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:border-[#0F4C5C] focus:outline-none"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700" htmlFor="setup-pw">

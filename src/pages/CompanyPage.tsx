@@ -103,7 +103,7 @@ export const CompanyPage: React.FC = () => {
             <FounderGalleryCarousel />
           </div>
 
-          <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="mt-10 md:mt-12 mx-auto max-w-[980px] grid grid-cols-1 gap-6 md:grid-cols-2">
             {founders.map((founder) => (
               <FounderProfileCard key={founder.id} founder={founder} />
             ))}

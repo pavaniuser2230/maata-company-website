@@ -25,6 +25,12 @@ const ROLE_OPTIONS: {
   scope: string;
 }[] = [
   {
+    id: 'super_admin',
+    title: 'Super Admin',
+    subtitle: 'Full Platform Governance & Executive Controls',
+    scope: 'Executive account management, role permissions, security audit logs, and full workspace access.',
+  },
+  {
     id: 'founder',
     title: 'Founder',
     subtitle: 'Executive Oversight & Business Vision',
@@ -35,6 +41,24 @@ const ROLE_OPTIONS: {
     title: 'Co-Founder & CEO',
     subtitle: 'Product Leadership, Strategy & Operations',
     scope: 'Product roadmap, marketing, app testing, reports, documents, and website publishing.',
+  },
+  {
+    id: 'director',
+    title: 'Director',
+    subtitle: 'Department Governance & Strategic Reporting',
+    scope: 'Executive briefings, business reports, confidential documents, and partnership reviews.',
+  },
+  {
+    id: 'executive',
+    title: 'Executive',
+    subtitle: 'Leadership Visibility & Briefings',
+    scope: 'Company overview, progress trackers, business reports, and authorised leadership documents.',
+  },
+  {
+    id: 'administrator',
+    title: 'Administrator',
+    subtitle: 'Operations, Publishing & Enquiries',
+    scope: 'Announcements, website publishing, partnership enquiries, and operational oversight.',
   },
 ];
 
@@ -50,12 +74,21 @@ export const LeadershipAccessPage: React.FC = () => {
   } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = (location.state as { from?: string; authNotice?: string } | null) || null;
+  const locationState =
+    (location.state as {
+      from?: string;
+      authNotice?: string;
+      setupSuccess?: string;
+      prefillEmail?: string;
+      prefillRole?: LeadershipSelectableRole;
+    } | null) || null;
 
   const [step, setStep] = useState<AuthStep>('select_role');
-  const [selectedRole, setSelectedRole] = useState<LeadershipSelectableRole | null>(null);
+  const [selectedRole, setSelectedRole] = useState<LeadershipSelectableRole | null>(
+    locationState?.prefillRole || null
+  );
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(locationState?.prefillEmail || '');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -63,11 +96,12 @@ export const LeadershipAccessPage: React.FC = () => {
 
   const [resetEmail, setResetEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
+  const [devPreviewToken, setDevPreviewToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
+  const [info, setInfo] = useState(locationState?.setupSuccess || '');
   const [routeNotice, setRouteNotice] = useState(locationState?.authNotice || '');
   const [leadershipVerified, setLeadershipVerified] = useState(false);
 
@@ -75,7 +109,13 @@ export const LeadershipAccessPage: React.FC = () => {
     if (locationState?.authNotice) {
       setRouteNotice(locationState.authNotice);
     }
-  }, [locationState?.authNotice]);
+    if (locationState?.setupSuccess) {
+      setInfo(locationState.setupSuccess);
+    }
+    if (locationState?.prefillEmail) {
+      setEmail(locationState.prefillEmail);
+    }
+  }, [locationState?.authNotice, locationState?.setupSuccess, locationState?.prefillEmail]);
 
   useEffect(() => {
     if (!user) {
@@ -85,8 +125,10 @@ export const LeadershipAccessPage: React.FC = () => {
     const hasPortalClearance =
       user.role === 'founder' ||
       user.role === 'ceo' ||
-      (user.role === 'super_admin' &&
-        (user.leadershipRole === 'founder' || user.leadershipRole === 'ceo'));
+      user.role === 'director' ||
+      user.role === 'executive' ||
+      user.role === 'administrator' ||
+      (user.role === 'super_admin' && Boolean(user.leadershipRole && user.leadershipRole !== 'none'));
     setLeadershipVerified(hasPortalClearance);
   }, [user]);
 
@@ -120,7 +162,6 @@ export const LeadershipAccessPage: React.FC = () => {
   const handleSelectRole = (role: LeadershipSelectableRole) => {
     setSelectedRole(role);
     dismissNotices();
-    setInfo('');
     setMfaRequired(false);
     setTotpCode('');
     setStep('credentials');
@@ -172,10 +213,15 @@ export const LeadershipAccessPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setInfo('');
+    setDevPreviewToken('');
     setSubmitting(true);
     try {
       const res = await adminApi.forgotPassword(resetEmail.trim());
       setInfo(res.message);
+      if (res.devPreviewToken) {
+        setDevPreviewToken(res.devPreviewToken);
+        setResetToken(res.devPreviewToken);
+      }
       setStep('reset');
     } catch (err: any) {
       setError(err?.message || 'Unable to request password reset.');
@@ -198,6 +244,7 @@ export const LeadershipAccessPage: React.FC = () => {
       setPassword('');
       setNewPassword('');
       setResetToken('');
+      setDevPreviewToken('');
       setStep('credentials');
     } catch (err: any) {
       setError(err?.message || 'Unable to reset password.');
@@ -210,7 +257,7 @@ export const LeadershipAccessPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#092F35] text-[#F7F4EC] flex flex-col justify-between px-6 py-10">
-      <header className="mx-auto flex w-full max-w-4xl items-center justify-between">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-xs font-medium text-[#F7F4EC]/70 hover:text-[#FFD84A] transition-colors"
@@ -225,7 +272,7 @@ export const LeadershipAccessPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto my-auto w-full max-w-3xl py-12">
+      <main className="mx-auto my-auto w-full max-w-5xl py-10">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/15 bg-white p-2">
             <img
@@ -247,7 +294,7 @@ export const LeadershipAccessPage: React.FC = () => {
         </div>
 
         {needsInitialSetup ? (
-          <div className="mt-10 rounded-xl border border-white/15 bg-[#0A3A47] p-6 sm:p-8 text-center">
+          <div className="mx-auto mt-10 max-w-xl rounded-xl border border-white/15 bg-[#0A3A47] p-6 sm:p-8 text-center">
             <ShieldCheck className="mx-auto h-7 w-7 text-[#FFD84A]" aria-hidden="true" />
             <h2 className="mt-3 text-lg font-semibold text-white">
               Initial Administrator Setup Required
@@ -258,7 +305,7 @@ export const LeadershipAccessPage: React.FC = () => {
             </p>
             <div className="mt-6">
               <Link
-                to="/admin/login"
+                to="/leadership/setup"
                 className="inline-flex items-center gap-2 rounded-lg bg-[#FFD84A] px-5 py-2.5 text-sm font-semibold text-[#092F35] hover:bg-[#ffe16f] transition-colors"
               >
                 <span>Complete Initial Setup</span>
@@ -268,6 +315,12 @@ export const LeadershipAccessPage: React.FC = () => {
           </div>
         ) : step === 'select_role' ? (
           <div className="mt-10">
+            {info && (
+              <div className="mb-6 rounded-xl border border-emerald-400/35 bg-emerald-950/45 px-4 py-3 text-xs text-emerald-100">
+                {info}
+              </div>
+            )}
+
             {activeNotice && (
               <div
                 role="alert"
@@ -282,21 +335,21 @@ export const LeadershipAccessPage: React.FC = () => {
               <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-950/40 px-4 py-3 text-xs text-amber-100">
                 Currently signed in as <strong>{user.email}</strong> ({user.role.replace(/_/g, ' ')}
                 ), which does not have Private Leadership Access. Authenticate below with an
-                authorised Founder or Co-Founder &amp; CEO account.
+                authorised executive account.
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ROLE_OPTIONS.map((option) => (
                 <button
                   key={option.id}
                   type="button"
                   onClick={() => handleSelectRole(option.id)}
-                  className="group flex flex-col justify-between rounded-xl border border-white/14 bg-[#0A3A47]/80 p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FFD84A]/65 hover:bg-[#0F4C5C]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD84A]"
+                  className="group flex flex-col justify-between rounded-xl border border-white/14 bg-[#0A3A47]/80 p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FFD84A]/65 hover:bg-[#0F4C5C]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD84A]"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#FFD84A]">
+                      <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#FFD84A]">
                         Executive Role
                       </span>
                       <Lock
@@ -304,14 +357,14 @@ export const LeadershipAccessPage: React.FC = () => {
                         aria-hidden="true"
                       />
                     </div>
-                    <h2 className="mt-3 text-xl font-semibold text-white">{option.title}</h2>
+                    <h2 className="mt-2.5 text-lg font-semibold text-white">{option.title}</h2>
                     <p className="mt-1 text-xs font-medium text-[#F7F4EC]/80">{option.subtitle}</p>
-                    <p className="mt-4 border-t border-white/10 pt-4 text-xs leading-relaxed text-[#F7F4EC]/65">
+                    <p className="mt-3.5 border-t border-white/10 pt-3.5 text-xs leading-relaxed text-[#F7F4EC]/65">
                       {option.scope}
                     </p>
                   </div>
 
-                  <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[#FFD84A]">
+                  <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#FFD84A]">
                     <span>Continue as {option.title}</span>
                     <ArrowRight
                       className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
@@ -365,6 +418,13 @@ export const LeadershipAccessPage: React.FC = () => {
               {info && (
                 <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-900">
                   {info}
+                </div>
+              )}
+
+              {devPreviewToken && step === 'reset' && (
+                <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
+                  <p className="font-semibold">Development Reset Token Preview</p>
+                  <p className="mt-1 break-all font-mono text-[11px]">{devPreviewToken}</p>
                 </div>
               )}
 

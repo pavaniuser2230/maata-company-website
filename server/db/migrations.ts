@@ -407,6 +407,70 @@ const MIGRATIONS: Migration[] = [
         ON cms_translations(entity_type, locale, status);
     `,
   },
+  {
+    id: '005_executive_roles_and_setup_lock',
+    disableForeignKeys: true,
+    sql: `
+      CREATE TABLE admin_users_v5 (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN (
+          'super_admin',
+          'founder',
+          'ceo',
+          'director',
+          'executive',
+          'administrator',
+          'content_manager',
+          'support_manager'
+        )),
+        leadership_role TEXT NOT NULL CHECK (leadership_role IN (
+          'super_admin',
+          'founder',
+          'ceo',
+          'director',
+          'executive',
+          'administrator',
+          'none'
+        )) DEFAULT 'none',
+        custom_permissions INTEGER NOT NULL DEFAULT 0,
+        permissions_json TEXT NOT NULL DEFAULT '[]',
+        mfa_enabled INTEGER NOT NULL DEFAULT 0,
+        mfa_secret_enc TEXT NOT NULL DEFAULT '',
+        pending_mfa_secret_enc TEXT NOT NULL DEFAULT '',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        last_login_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      INSERT INTO admin_users_v5 (
+        id, name, email, password_hash, role, leadership_role,
+        custom_permissions, permissions_json, mfa_enabled, mfa_secret_enc, pending_mfa_secret_enc,
+        is_active, last_login_at, created_at, updated_at
+      )
+      SELECT
+        id, name, email, password_hash, role, leadership_role,
+        custom_permissions, permissions_json, mfa_enabled, mfa_secret_enc, pending_mfa_secret_enc,
+        is_active, last_login_at, created_at, updated_at
+      FROM admin_users;
+
+      DROP TABLE admin_users;
+      ALTER TABLE admin_users_v5 RENAME TO admin_users;
+
+      CREATE TABLE IF NOT EXISTS system_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      INSERT OR IGNORE INTO system_settings (key, value)
+      SELECT 'initial_setup_completed', 'true'
+      WHERE EXISTS (SELECT 1 FROM admin_users WHERE role = 'super_admin');
+    `,
+  },
 ];
 
 export function runMigrations(db: DatabaseSync): void {

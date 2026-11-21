@@ -5,6 +5,7 @@ interface AdminAuthContextValue {
   user: AdminUser | null;
   loading: boolean;
   needsInitialSetup: boolean;
+  requiresSetupToken: boolean;
   sessionNotice: string | null;
   authError: string | null;
   refreshSession: () => Promise<void>;
@@ -19,7 +20,12 @@ interface AdminAuthContextValue {
     name: string,
     email: string,
     password: string,
-    leadershipRole?: LeadershipRole
+    leadershipRole?: LeadershipRole,
+    options?: {
+      confirmPassword?: string;
+      setupToken?: string;
+      autoSignIn?: boolean;
+    }
   ) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -28,6 +34,7 @@ const AdminAuthContext = createContext<AdminAuthContextValue>({
   user: null,
   loading: true,
   needsInitialSetup: false,
+  requiresSetupToken: false,
   sessionNotice: null,
   authError: null,
   refreshSession: async () => {},
@@ -42,6 +49,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsInitialSetup, setNeedsInitialSetup] = useState(false);
+  const [requiresSetupToken, setRequiresSetupToken] = useState(false);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -64,6 +72,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const setup = await adminApi.getSetupStatus();
       setNeedsInitialSetup(setup.needsInitialSetup);
+      setRequiresSetupToken(Boolean(setup.requiresSetupToken));
 
       if (setup.needsInitialSetup) {
         setUser(null);
@@ -113,10 +122,28 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     name: string,
     email: string,
     password: string,
-    leadershipRole?: LeadershipRole
+    leadershipRole?: LeadershipRole,
+    options?: {
+      confirmPassword?: string;
+      setupToken?: string;
+      autoSignIn?: boolean;
+    }
   ) => {
-    const res = await adminApi.setupInitialAdmin({ name, email, password, leadershipRole });
-    setAuthenticatedUser(res.user);
+    const res = await adminApi.setupInitialAdmin({
+      name,
+      email,
+      password,
+      confirmPassword: options?.confirmPassword,
+      leadershipRole,
+      setupToken: options?.setupToken,
+      autoSignIn: options?.autoSignIn,
+    });
+    setNeedsInitialSetup(false);
+    if (options?.autoSignIn !== false) {
+      setAuthenticatedUser(res.user);
+    } else {
+      setUser(null);
+    }
   };
 
   const logout = async () => {
@@ -135,6 +162,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user,
         loading,
         needsInitialSetup,
+        requiresSetupToken,
         sessionNotice,
         authError,
         refreshSession,

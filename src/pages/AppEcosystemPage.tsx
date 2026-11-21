@@ -52,15 +52,26 @@ export const AppEcosystemPage: React.FC = () => {
         </div>
       </section>
 
-      <section id="business" className="bg-[#F7F4EC] text-[#092F35] py-20 border-b border-[#092F35]/10">
-        <div className="mx-auto max-w-[1280px] px-6">
-          <div className="mb-12">
-            <SectionHeading
-              kicker={dict.appPage.businessKicker}
-              title={dict.appPage.businessTitle}
-              serifAccent={dict.appPage.businessSerifAccent}
-              tone="dark"
-            />
+      <section
+        id="business"
+        className="overflow-x-clip bg-[#F7F4EC] text-[#092F35] py-14 md:py-16 border-b border-[#092F35]/10"
+      >
+        <div className="mx-auto max-w-[1140px] px-6">
+          <div className="mb-8 md:mb-10 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-end lg:gap-8">
+            <div className="lg:col-span-7">
+              <SectionHeading
+                kicker={dict.appPage.businessKicker}
+                title={dict.appPage.businessTitle}
+                serifAccent={dict.appPage.businessSerifAccent}
+                tone="dark"
+                className="max-w-none"
+              />
+            </div>
+            <div className="lg:col-span-5 lg:pb-1">
+              <p className="text-[15px] leading-[1.68] text-[#092F35]/78">
+                {dict.home.businessDescription}
+              </p>
+            </div>
           </div>
           <MaataBusinessShowcase />
         </div>

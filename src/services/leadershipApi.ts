@@ -1,6 +1,13 @@
-import { ApiError, type AdminRole, type AdminUser, type LeadershipRole, type PermissionKey } from './cmsApi';
+import {
+  ApiError,
+  type AdminRole,
+  type AdminUser,
+  type LeadershipRole,
+  type LeadershipSelectableRole,
+  type PermissionKey,
+} from './cmsApi';
 
-export type LeadershipSelectableRole = 'founder' | 'ceo';
+export type { LeadershipSelectableRole };
 export type WorkItemDomain = 'product' | 'marketing' | 'testing';
 export type WorkItemStatus = 'planned' | 'in_progress' | 'in_review' | 'completed' | 'blocked';
 export type WorkItemPriority = 'high' | 'medium' | 'low';
@@ -358,6 +365,7 @@ export const leadershipApi = {
   updateTeamUser: (
     id: string,
     payload: {
+      name?: string;
       role?: AdminRole;
       leadershipRole?: LeadershipRole;
       customPermissions?: boolean;

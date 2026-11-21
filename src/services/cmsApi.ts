@@ -2,10 +2,21 @@ export type AdminRole =
   | 'super_admin'
   | 'founder'
   | 'ceo'
+  | 'director'
+  | 'executive'
+  | 'administrator'
   | 'content_manager'
   | 'support_manager';
 
-export type LeadershipRole = 'founder' | 'ceo' | 'none';
+export type LeadershipSelectableRole =
+  | 'super_admin'
+  | 'founder'
+  | 'ceo'
+  | 'director'
+  | 'executive'
+  | 'administrator';
+
+export type LeadershipRole = LeadershipSelectableRole | 'none';
 
 export type PermissionKey =
   | 'leadership.overview'
@@ -279,15 +290,23 @@ export const publicApi = {
 };
 
 export const adminApi = {
-  getSetupStatus: () => apiFetch<{ needsInitialSetup: boolean }>('/api/admin/auth/setup-status'),
+  getSetupStatus: () =>
+    apiFetch<{
+      needsInitialSetup: boolean;
+      setupLocked?: boolean;
+      requiresSetupToken?: boolean;
+    }>('/api/admin/auth/setup-status'),
 
   setupInitialAdmin: (payload: {
     name: string;
     email: string;
     password: string;
+    confirmPassword?: string;
     leadershipRole?: LeadershipRole;
+    setupToken?: string;
+    autoSignIn?: boolean;
   }) =>
-    apiFetch<{ user: AdminUser }>('/api/admin/auth/setup-initial-admin', {
+    apiFetch<{ user: AdminUser; setupLocked?: boolean }>('/api/admin/auth/setup-initial-admin', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -572,7 +591,7 @@ export const adminApi = {
 
   updateAdminUser: (
     id: string,
-    payload: { role?: AdminRole; leadershipRole?: LeadershipRole; isActive?: boolean }
+    payload: { name?: string; role?: AdminRole; leadershipRole?: LeadershipRole; isActive?: boolean }
   ) =>
     apiFetch<{ ok: boolean }>(`/api/admin/users/${encodeURIComponent(id)}`, {
       method: 'PATCH',

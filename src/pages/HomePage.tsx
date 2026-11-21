@@ -174,7 +174,7 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="pt-10 md:pt-12 mx-auto max-w-[980px] grid grid-cols-1 gap-6 md:grid-cols-2">
             {founders.map((founder) => (
               <FounderProfileCard key={founder.id} founder={founder} />
             ))}
@@ -216,17 +216,24 @@ export const HomePage: React.FC = () => {
       {/* E. MAATA BUSINESS (#F7F4EC Warm Ivory) */}
       <section
         id="business"
-        className="bg-[#F7F4EC] text-[#092F35] py-20 md:py-24 border-b border-[#092F35]/10"
+        className="overflow-x-clip bg-[#F7F4EC] text-[#092F35] py-14 md:py-16 border-b border-[#092F35]/10"
       >
-        <div className="mx-auto max-w-[1280px] px-6">
-          <div className="mb-12">
-            <SectionHeading
-              kicker={dict.home.businessKicker}
-              title={dict.home.businessTitle}
-              serifAccent={dict.home.businessSerifAccent}
-              description={dict.home.businessDescription}
-              tone="dark"
-            />
+        <div className="mx-auto max-w-[1140px] px-6">
+          <div className="mb-8 md:mb-10 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-end lg:gap-8">
+            <div className="lg:col-span-7">
+              <SectionHeading
+                kicker={dict.home.businessKicker}
+                title={dict.home.businessTitle}
+                serifAccent={dict.home.businessSerifAccent}
+                tone="dark"
+                className="max-w-none"
+              />
+            </div>
+            <div className="lg:col-span-5 lg:pb-1">
+              <p className="text-[15px] leading-[1.68] text-[#092F35]/78">
+                {dict.home.businessDescription}
+              </p>
+            </div>
           </div>
 
           <MaataBusinessShowcase />

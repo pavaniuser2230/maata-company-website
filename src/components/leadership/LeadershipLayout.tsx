@@ -101,11 +101,24 @@ const ROUTE_TITLES: Record<string, string> = {
   '/leadership/settings': 'Leadership Settings',
 };
 
-function formatExecutiveDesignation(role: string, leadershipRole?: string): string {
-  if (leadershipRole === 'founder' || role === 'founder') return 'Founder';
-  if (leadershipRole === 'ceo' || role === 'ceo') return 'Co-Founder & CEO';
-  if (role === 'super_admin') return 'Super Admin';
-  return role;
+export function formatExecutiveDesignation(role: string, leadershipRole?: string): string {
+  const effective = leadershipRole && leadershipRole !== 'none' ? leadershipRole : role;
+  switch (effective) {
+    case 'super_admin':
+      return 'Super Admin';
+    case 'founder':
+      return 'Founder';
+    case 'ceo':
+      return 'Co-Founder & CEO';
+    case 'director':
+      return 'Director';
+    case 'executive':
+      return 'Executive';
+    case 'administrator':
+      return 'Administrator';
+    default:
+      return role.replace(/_/g, ' ');
+  }
 }
 
 export const LeadershipLayout: React.FC = () => {

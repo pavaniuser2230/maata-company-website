@@ -110,6 +110,69 @@ export function createRateLimiter(options: {
   };
 }
 
+/**
+ * Verifies same-origin requests on cookie-authenticated state-changing endpoints
+ * to mitigate cross-site request forgery (CSRF) while supporting reverse proxies
+ * and AI Studio preview frames.
+ */
+export function verifySameOriginForMutations(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  const method = req.method.toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+    next();
+    return;
+  }
+
+  // Only enforce on cookie-authenticated requests that include an Origin header
+  const hasSessionCookie = Boolean(req.cookies?.[SESSION_COOKIE_NAME]);
+  const originHeader = req.headers.origin;
+  if (!hasSessionCookie || !originHeader) {
+    next();
+    return;
+  }
+
+  try {
+    const originUrl = new URL(originHeader);
+    const requestHost = String(req.headers['x-forwarded-host'] || req.headers.host || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase();
+
+    const allowedHosts = new Set<string>();
+    if (requestHost) allowedHosts.add(requestHost);
+    if (env.appUrl) {
+      try {
+        allowedHosts.add(new URL(env.appUrl).host.toLowerCase());
+      } catch {
+        // Ignore invalid APP_URL
+      }
+    }
+
+    const originHost = originUrl.host.toLowerCase();
+    const isLocalOrigin =
+      originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1';
+    const isSameHost = allowedHosts.has(originHost);
+
+    if (isSameHost || (env.nodeEnv !== 'production' && isLocalOrigin)) {
+      next();
+      return;
+    }
+
+    res.status(403).json({
+      error: 'Cross-origin state-changing request rejected for session security.',
+      code: 'CSRF_ORIGIN_REJECTED',
+    });
+  } catch {
+    res.status(403).json({
+      error: 'Invalid request origin header.',
+      code: 'CSRF_ORIGIN_INVALID',
+    });
+  }
+}
+
 export function requireAuth(req: AdminRequest, res: Response, next: NextFunction): void {
   res.setHeader('Cache-Control', 'no-store, private');
   res.setHeader('Vary', 'Cookie');

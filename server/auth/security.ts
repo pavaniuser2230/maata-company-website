@@ -6,23 +6,52 @@ export type AdminRole =
   | 'super_admin'
   | 'founder'
   | 'ceo'
+  | 'director'
+  | 'executive'
+  | 'administrator'
   | 'content_manager'
   | 'support_manager';
 
-export type LeadershipRole = 'founder' | 'ceo' | 'none';
+export type LeadershipSelectableRole =
+  | 'super_admin'
+  | 'founder'
+  | 'ceo'
+  | 'director'
+  | 'executive'
+  | 'administrator';
+
+export type LeadershipRole = LeadershipSelectableRole | 'none';
 
 export const ADMIN_ROLES: readonly AdminRole[] = [
   'super_admin',
   'founder',
   'ceo',
+  'director',
+  'executive',
+  'administrator',
   'content_manager',
   'support_manager',
 ] as const;
 
-export const LEADERSHIP_SELECTABLE_ROLES: readonly ('founder' | 'ceo')[] = [
+export const LEADERSHIP_SELECTABLE_ROLES: readonly LeadershipSelectableRole[] = [
+  'super_admin',
   'founder',
   'ceo',
+  'director',
+  'executive',
+  'administrator',
 ] as const;
+
+export const ROLE_DISPLAY_LABELS: Record<AdminRole, string> = {
+  super_admin: 'Super Admin',
+  founder: 'Founder',
+  ceo: 'Co-Founder & CEO',
+  director: 'Director',
+  executive: 'Executive',
+  administrator: 'Administrator',
+  content_manager: 'Content Manager',
+  support_manager: 'Support Manager',
+};
 
 export type PermissionKey =
   | 'leadership.overview'
@@ -89,15 +118,61 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AdminRole, readonly PermissionKey[
     'leadership.enquiries',
     'leadership.settings.security',
   ],
+  director: [
+    'leadership.overview',
+    'leadership.product.read',
+    'leadership.marketing.read',
+    'leadership.testing.read',
+    'leadership.reports.read',
+    'leadership.reports.write',
+    'leadership.documents.read',
+    'leadership.documents.write',
+    'leadership.enquiries',
+    'leadership.settings.security',
+  ],
+  executive: [
+    'leadership.overview',
+    'leadership.product.read',
+    'leadership.marketing.read',
+    'leadership.testing.read',
+    'leadership.reports.read',
+    'leadership.documents.read',
+    'leadership.settings.security',
+  ],
+  administrator: [
+    'leadership.overview',
+    'leadership.product.read',
+    'leadership.marketing.read',
+    'leadership.testing.read',
+    'leadership.reports.read',
+    'leadership.documents.read',
+    'leadership.publishing',
+    'leadership.enquiries',
+    'leadership.settings.security',
+  ],
   content_manager: [],
   support_manager: [],
 };
 
+function isLeadershipSelectableRole(value: unknown): value is LeadershipSelectableRole {
+  return (
+    typeof value === 'string' &&
+    (LEADERSHIP_SELECTABLE_ROLES as readonly string[]).includes(value)
+  );
+}
+
 export function resolveLeadershipRole(role: AdminRole, storedLeadershipRole?: string | null): LeadershipRole {
-  if (role === 'founder') return 'founder';
-  if (role === 'ceo') return 'ceo';
+  if (
+    role === 'founder' ||
+    role === 'ceo' ||
+    role === 'director' ||
+    role === 'executive' ||
+    role === 'administrator'
+  ) {
+    return role;
+  }
   if (role === 'super_admin') {
-    if (storedLeadershipRole === 'founder' || storedLeadershipRole === 'ceo') {
+    if (isLeadershipSelectableRole(storedLeadershipRole)) {
       return storedLeadershipRole;
     }
     return 'none';
@@ -108,20 +183,35 @@ export function resolveLeadershipRole(role: AdminRole, storedLeadershipRole?: st
 export function isAuthorisedForLeadershipSelection(
   role: AdminRole,
   storedLeadershipRole: string | null | undefined,
-  selectedRole: 'founder' | 'ceo'
+  selectedRole: LeadershipSelectableRole
 ): boolean {
   if (role === 'content_manager' || role === 'support_manager') {
     return false;
   }
   const resolved = resolveLeadershipRole(role, storedLeadershipRole);
+  if (resolved === 'none') {
+    return false;
+  }
+  if (role === 'super_admin') {
+    // A Super Admin with an executive designation can sign in under 'super_admin' OR their assigned designation
+    return selectedRole === 'super_admin' || selectedRole === resolved;
+  }
   return resolved === selectedRole;
 }
 
 export function canAccessLeadershipPortal(role: AdminRole, storedLeadershipRole?: string | null): boolean {
-  if (role === 'founder' || role === 'ceo') return true;
+  if (
+    role === 'founder' ||
+    role === 'ceo' ||
+    role === 'director' ||
+    role === 'executive' ||
+    role === 'administrator'
+  ) {
+    return true;
+  }
   if (role === 'super_admin') {
     const resolved = resolveLeadershipRole(role, storedLeadershipRole);
-    return resolved === 'founder' || resolved === 'ceo';
+    return resolved !== 'none';
   }
   return false;
 }
@@ -175,6 +265,12 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   const actualBuf = crypto.scryptSync(password, salt, 64);
   if (expectedBuf.length !== actualBuf.length) return false;
   return crypto.timingSafeEqual(expectedBuf, actualBuf);
+}
+
+export function timingSafeStringEqual(a: string, b: string): boolean {
+  const hashA = crypto.createHash('sha256').update(a, 'utf8').digest();
+  const hashB = crypto.createHash('sha256').update(b, 'utf8').digest();
+  return crypto.timingSafeEqual(hashA, hashB) && a.length === b.length;
 }
 
 export function isStrongPassword(password: string): { valid: boolean; reason?: string } {

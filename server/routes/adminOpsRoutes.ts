@@ -587,8 +587,19 @@ const createAdminUserSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(160),
   password: z.string().min(10).max(128),
-  role: z.enum(['super_admin', 'founder', 'ceo', 'content_manager', 'support_manager']),
-  leadershipRole: z.enum(['founder', 'ceo', 'none']).optional(),
+  role: z.enum([
+    'super_admin',
+    'founder',
+    'ceo',
+    'director',
+    'executive',
+    'administrator',
+    'content_manager',
+    'support_manager',
+  ]),
+  leadershipRole: z
+    .enum(['super_admin', 'founder', 'ceo', 'director', 'executive', 'administrator', 'none'])
+    .optional(),
 });
 
 adminOpsRouter.post('/users', requireRole(['super_admin']), (req: AdminRequest, res) => {
@@ -651,8 +662,22 @@ adminOpsRouter.post('/users', requireRole(['super_admin']), (req: AdminRequest, 
 });
 
 const patchAdminUserSchema = z.object({
-  role: z.enum(['super_admin', 'founder', 'ceo', 'content_manager', 'support_manager']).optional(),
-  leadershipRole: z.enum(['founder', 'ceo', 'none']).optional(),
+  name: z.string().trim().min(2).max(100).optional(),
+  role: z
+    .enum([
+      'super_admin',
+      'founder',
+      'ceo',
+      'director',
+      'executive',
+      'administrator',
+      'content_manager',
+      'support_manager',
+    ])
+    .optional(),
+  leadershipRole: z
+    .enum(['super_admin', 'founder', 'ceo', 'director', 'executive', 'administrator', 'none'])
+    .optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -665,9 +690,9 @@ adminOpsRouter.patch('/users/:id', requireRole(['super_admin']), (req: AdminRequ
 
   const db = getDb();
   const target = db
-    .prepare('SELECT id, email, role, leadership_role, is_active FROM admin_users WHERE id = ?')
+    .prepare('SELECT id, name, email, role, leadership_role, is_active FROM admin_users WHERE id = ?')
     .get(req.params.id) as
-    | { id: string; email: string; role: string; leadership_role: string; is_active: number }
+    | { id: string; name: string; email: string; role: string; leadership_role: string; is_active: number }
     | undefined;
 
   if (!target) {
@@ -684,6 +709,7 @@ adminOpsRouter.patch('/users/:id', requireRole(['super_admin']), (req: AdminRequ
     return;
   }
 
+  const nextName = parsed.data.name ?? target.name;
   const nextRole = (parsed.data.role ?? target.role) as any;
   const nextLeadershipRole = resolveLeadershipRole(
     nextRole,
@@ -694,9 +720,9 @@ adminOpsRouter.patch('/users/:id', requireRole(['super_admin']), (req: AdminRequ
 
   db.prepare(`
     UPDATE admin_users
-    SET role = ?, leadership_role = ?, is_active = ?, updated_at = datetime('now')
+    SET name = ?, role = ?, leadership_role = ?, is_active = ?, updated_at = datetime('now')
     WHERE id = ?
-  `).run(nextRole, nextLeadershipRole, nextActive, req.params.id);
+  `).run(nextName, nextRole, nextLeadershipRole, nextActive, req.params.id);
 
   if (nextActive === 0) {
     db.prepare('DELETE FROM admin_sessions WHERE user_id = ?').run(req.params.id);
@@ -709,11 +735,17 @@ adminOpsRouter.patch('/users/:id', requireRole(['super_admin']), (req: AdminRequ
     action: 'ADMIN_USER_UPDATED',
     resourceType: 'admin_users',
     resourceId: req.params.id,
-    details: { email: target.email, nextRole, nextLeadershipRole, nextActive },
+    details: { email: target.email, nextName, nextRole, nextLeadershipRole, nextActive },
     ipAddress: getClientIp(req),
   });
 
-  res.json({ ok: true, role: nextRole, leadership_role: nextLeadershipRole, is_active: nextActive });
+  res.json({
+    ok: true,
+    name: nextName,
+    role: nextRole,
+    leadership_role: nextLeadershipRole,
+    is_active: nextActive,
+  });
 });
 
 adminOpsRouter.get('/audit-logs', requireRole(['super_admin']), (req, res) => {

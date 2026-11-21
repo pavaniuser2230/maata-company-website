@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { Layout } from './components/Layout';
 import { AdminAuthProvider } from './context/AdminAuthContext';
+import { FirebaseProvider } from './context/FirebaseContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { PublicCmsProvider } from './context/PublicCmsContext';
 import { isSupportedLanguage } from './i18n';
@@ -15,6 +17,7 @@ import { AdminOverviewPage } from './pages/admin/AdminOverviewPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { LeadershipLayout } from './components/leadership/LeadershipLayout';
+import { InitialSetupPage } from './pages/leadership/InitialSetupPage';
 import { LeadershipAccessPage } from './pages/leadership/LeadershipAccessPage';
 import { LeadershipDocumentsPage } from './pages/leadership/LeadershipDocumentsPage';
 import { LeadershipEnquiriesPage } from './pages/leadership/LeadershipEnquiriesPage';
@@ -66,12 +69,16 @@ function LanguagePrefixedRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <LanguageProvider>
-        <PublicCmsProvider>
-          <AdminAuthProvider>
-            <Routes>
+    <ErrorBoundary>
+      <FirebaseProvider>
+        <BrowserRouter>
+          <LanguageProvider>
+            <PublicCmsProvider>
+              <AdminAuthProvider>
+                <Routes>
               {/* Private Leadership Access & Executive Workspace */}
+              <Route path="/leadership/setup" element={<InitialSetupPage />} />
+              <Route path="/admin/setup" element={<Navigate to="/leadership/setup" replace />} />
               <Route path="/leadership/access" element={<LeadershipAccessPage />} />
               <Route path="/leadership" element={<LeadershipLayout />}>
                 <Route index element={<LeadershipOverviewPage />} />
@@ -146,9 +153,11 @@ export default function App() {
               <Route path="/:lang/*" element={<LanguagePrefixedRoutes />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </AdminAuthProvider>
-        </PublicCmsProvider>
-      </LanguageProvider>
-    </BrowserRouter>
+              </AdminAuthProvider>
+            </PublicCmsProvider>
+          </LanguageProvider>
+        </BrowserRouter>
+      </FirebaseProvider>
+    </ErrorBoundary>
   );
 }
