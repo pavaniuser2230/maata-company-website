@@ -75,8 +75,8 @@ export function createExpressApp(options?: { dbPath?: string }) {
       return;
     }
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.sendFile(filePath);
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    res.sendFile(filePath, { cacheControl: false });
   });
 
   app.get('/robots.txt', (_req, res) => {
@@ -86,8 +86,8 @@ export function createExpressApp(options?: { dbPath?: string }) {
       return;
     }
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.sendFile(filePath);
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    res.sendFile(filePath, { cacheControl: false });
   });
 
   app.get('/api/health', (_req, res) => {
