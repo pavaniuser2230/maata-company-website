@@ -123,6 +123,7 @@ export const CompanyHeroVisual: React.FC = () => {
             alt={dict.companyHeroVisual.imageAlt}
             referrerPolicy="no-referrer"
             loading="eager"
+            fetchPriority="high"
             decoding="async"
             onError={() => setImageError(true)}
             className="h-full w-full object-cover object-center"

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { BRAND_ASSETS } from '../../config/brandAssets';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import type { LeadershipSelectableRole } from '../../services/cmsApi';
 
 const DESIGNATION_OPTIONS: { value: LeadershipSelectableRole; label: string }[] = [
@@ -29,6 +30,11 @@ const DESIGNATION_OPTIONS: { value: LeadershipSelectableRole; label: string }[] 
 export const InitialSetupPage: React.FC = () => {
   const { loading, needsInitialSetup, requiresSetupToken, setupInitialAdmin, refreshSession } =
     useAdminAuth();
+  usePageSeo({
+    title: 'Initial Administrator Setup | MAATA Technologies',
+    description: 'One-time Super Admin registration for MAATA Technologies.',
+    noIndex: true,
+  });
   const navigate = useNavigate();
 
   const [name, setName] = useState('');

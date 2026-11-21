@@ -99,6 +99,7 @@ export const MaataBusinessShowcase: React.FC = () => {
               alt={dict.business.commerceCraftAlt || EDITORIAL_SCENES.commerceCraft.alt}
               referrerPolicy="no-referrer"
               loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover"
             />
           </div>

@@ -89,6 +89,7 @@ export const CommunityHero: React.FC = () => {
             alt=""
             referrerPolicy="no-referrer"
             loading="eager"
+            fetchPriority="high"
             decoding="async"
             onError={() => setImageError(true)}
             className="h-full w-full object-cover object-[58%_20%]"
@@ -233,6 +234,7 @@ export const CommunityHero: React.FC = () => {
                 alt={dict.hero.imageAlt}
                 referrerPolicy="no-referrer"
                 loading="eager"
+                fetchPriority="high"
                 decoding="async"
                 onError={() => setImageError(true)}
                 className="h-full w-full object-cover object-[58%_20%]"

@@ -108,6 +108,7 @@ export const HomePage: React.FC = () => {
                     alt={dict.home.townDawnAlt || EDITORIAL_SCENES.townDawn.alt}
                     referrerPolicy="no-referrer"
                     loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -123,6 +124,7 @@ export const HomePage: React.FC = () => {
                     alt={dict.home.merchantCounterAlt || EDITORIAL_SCENES.merchantCounter.alt}
                     referrerPolicy="no-referrer"
                     loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -145,7 +147,6 @@ export const HomePage: React.FC = () => {
                   assetId="foundersCombined"
                   altOverride={dict.home.foundersCombinedAlt}
                   tone="dark"
-                  priority
                   className="rounded-xl"
                 />
                 <figcaption className="px-2 pt-3 pb-1 text-xs font-editorial italic text-[#F7F4EC]/75">

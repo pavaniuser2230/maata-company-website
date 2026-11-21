@@ -274,6 +274,7 @@ export const Footer: React.FC = () => {
             </p>
             <Link
               to="/leadership/access"
+              rel="nofollow"
               aria-label={dict.a11y.privateLeadershipAccess}
               title={dict.a11y.privateLeadershipAccess}
               className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#F7F4EC]/30 transition-colors hover:text-[#FFD84A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD84A]"

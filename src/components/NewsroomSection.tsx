@@ -37,6 +37,7 @@ const EditorialCard: React.FC<{ article: CmsArticle }> = ({ article }) => {
             alt={article.title}
             referrerPolicy="no-referrer"
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover"
           />
         </div>

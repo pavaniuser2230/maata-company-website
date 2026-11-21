@@ -22,9 +22,9 @@ export const MaataLogo: React.FC<MaataLogoProps> = ({
   const logoConfig = BRAND_ASSETS.logo;
 
   const sizeMap = {
-    sm: { img: 'h-8 w-8', text: 'text-base' },
-    md: { img: 'h-10 w-10', text: 'text-lg' },
-    lg: { img: 'h-14 w-14', text: 'text-2xl' },
+    sm: { img: 'h-8 w-8', px: 32, text: 'text-base' },
+    md: { img: 'h-10 w-10', px: 40, text: 'text-lg' },
+    lg: { img: 'h-14 w-14', px: 56, text: 'text-2xl' },
   }[size];
 
   return (
@@ -33,6 +33,8 @@ export const MaataLogo: React.FC<MaataLogoProps> = ({
         <img
           src={logoConfig.src}
           alt={logoConfig.alt}
+          width={sizeMap.px}
+          height={sizeMap.px}
           referrerPolicy="no-referrer"
           loading="eager"
           decoding="async"

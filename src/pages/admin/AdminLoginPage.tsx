@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, KeyRound, Lock, ShieldAlert, UserPlus } from 'lucide-react';
 import { BRAND_ASSETS } from '../../config/brandAssets';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import { adminApi, type LeadershipRole } from '../../services/cmsApi';
 
 type AuthMode = 'login' | 'forgot' | 'reset';
@@ -10,6 +11,11 @@ type AuthMode = 'login' | 'forgot' | 'reset';
 export const AdminLoginPage: React.FC = () => {
   const { user, loading, needsInitialSetup, requiresSetupToken, login, setupInitialAdmin } =
     useAdminAuth();
+  usePageSeo({
+    title: 'Administrator Sign In | MAATA Technologies',
+    description: 'Private administrator sign-in for MAATA Technologies CMS.',
+    noIndex: true,
+  });
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<AuthMode>('login');

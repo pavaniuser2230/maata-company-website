@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { BRAND_ASSETS } from '../../config/brandAssets';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import { ApiError, adminApi, type AdminUser } from '../../services/cmsApi';
 import { leadershipApi, type LeadershipSelectableRole } from '../../services/leadershipApi';
 
@@ -72,6 +73,11 @@ export const LeadershipAccessPage: React.FC = () => {
     setAuthenticatedUser,
     clearSessionNotice,
   } = useAdminAuth();
+  usePageSeo({
+    title: 'Private Leadership Access | MAATA Technologies',
+    description: 'Authorised executive sign-in portal for MAATA Technologies leadership.',
+    noIndex: true,
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const locationState =

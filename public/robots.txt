@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /leadership
+Disallow: /admin
+Disallow: /api
+
+Sitemap: https://maata-technologies.ai.studio/sitemap.xml

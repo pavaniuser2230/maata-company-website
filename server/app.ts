@@ -32,6 +32,12 @@ export function createExpressApp(options?: { dbPath?: string }) {
     next();
   });
 
+  // Prevent search engines from indexing private leadership, admin, and API routes (defense-in-depth alongside robots.txt)
+  app.use(['/leadership', '/admin', '/api'], (_req, res, next) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+    next();
+  });
+
   // Never allow reverse proxies or browsers to cache authenticated auth/session/workspace endpoints
   app.use(['/api/admin', '/api/leadership'], verifySameOriginForMutations, (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, private');
@@ -49,6 +55,40 @@ export function createExpressApp(options?: { dbPath?: string }) {
       maxAge: '7d',
     })
   );
+
+  const resolveStaticRootFile = (filename: string) => {
+    const distCandidate = path.resolve(process.cwd(), 'dist', filename);
+    if (env.nodeEnv === 'production' && fs.existsSync(distCandidate)) {
+      return distCandidate;
+    }
+    const publicCandidate = path.resolve(process.cwd(), 'public', filename);
+    if (fs.existsSync(publicCandidate)) {
+      return publicCandidate;
+    }
+    return fs.existsSync(distCandidate) ? distCandidate : null;
+  };
+
+  app.get('/sitemap.xml', (_req, res) => {
+    const filePath = resolveStaticRootFile('sitemap.xml');
+    if (!filePath) {
+      res.status(404).type('text/plain; charset=utf-8').send('Sitemap not found.');
+      return;
+    }
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(filePath);
+  });
+
+  app.get('/robots.txt', (_req, res) => {
+    const filePath = resolveStaticRootFile('robots.txt');
+    if (!filePath) {
+      res.status(404).type('text/plain; charset=utf-8').send('robots.txt not found.');
+      return;
+    }
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(filePath);
+  });
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true, service: 'maata-technologies-cms' });

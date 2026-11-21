@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { BRAND_ASSETS } from '../../config/brandAssets';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import type { AdminRole } from '../../services/cmsApi';
 import { StatusBadge } from './AdminUi';
 
@@ -99,6 +100,11 @@ const ROUTE_TITLES: Record<string, string> = {
 
 export const AdminLayout: React.FC = () => {
   const { user, loading, logout } = useAdminAuth();
+  usePageSeo({
+    title: 'Admin CMS Portal | MAATA Technologies',
+    description: 'Private administration workspace for MAATA Technologies.',
+    noIndex: true,
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const location = useLocation();

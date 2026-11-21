@@ -69,6 +69,8 @@ export const CompanyPage: React.FC = () => {
                   src={EDITORIAL_SCENES.merchantCounter.src}
                   alt={dict.home.merchantCounterAlt || EDITORIAL_SCENES.merchantCounter.alt}
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
                   className="aspect-[16/10] w-full rounded-xl object-cover"
                 />
                 <figcaption className="px-2 pt-3 pb-1 text-xs font-editorial italic text-[#092F35]/70">

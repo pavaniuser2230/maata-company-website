@@ -32,6 +32,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F4EC] text-[#092F35]">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-[#FFD84A] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[#092F35] focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       {activeBanner && (
         <div
           role="region"
@@ -67,7 +73,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       <Header />
-      <main className="flex-1">{children}</main>
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
+        {children}
+      </main>
       <Footer />
     </div>
   );

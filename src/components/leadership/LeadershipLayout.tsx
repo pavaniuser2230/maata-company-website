@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { BRAND_ASSETS } from '../../config/brandAssets';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import { ApiError, type AdminUser, type PermissionKey } from '../../services/cmsApi';
 import { leadershipApi } from '../../services/leadershipApi';
 
@@ -123,6 +124,11 @@ export function formatExecutiveDesignation(role: string, leadershipRole?: string
 
 export const LeadershipLayout: React.FC = () => {
   const { user, loading, sessionNotice, authError, setAuthenticatedUser } = useAdminAuth();
+  usePageSeo({
+    title: 'Executive Leadership Workspace | MAATA Technologies',
+    description: 'Private executive portal for MAATA Technologies leadership.',
+    noIndex: true,
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [verifiedUser, setVerifiedUser] = useState<AdminUser | null>(null);

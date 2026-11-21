@@ -4,48 +4,49 @@ export const EN_DICT: TranslationDictionary = {
   meta: {
     siteName: 'MAATA Technologies',
     home: {
-      title: 'MAATA Technologies — From Local Experience to a Connected India',
+      title: 'MAATA Technologies | Building Digital Products and Innovation in India',
       description:
-        'MAATA Technologies is the Indian technology company behind MAATA India, bringing communication, everyday services, and local businesses closer together from Chittoor, Andhra Pradesh.',
+        'MAATA Technologies in Chittoor, Andhra Pradesh builds MAATA India—connecting communication, local services, work discovery, and MAATA Business across India.',
     },
     company: {
-      title: 'Company & Founders — MAATA Technologies',
+      title: 'About MAATA Technologies | Founders, Vision & Chittoor Roots',
       description:
-        'Learn about MAATA Technologies, Founder G. Balaji Reddy, Co-Founder & CEO G. Pavani, our Chittoor roots, Vision, Mission, and Company Journey.',
+        'Meet MAATA Technologies founders G. Balaji Reddy and G. Pavani, and explore our Chittoor roots, company vision, mission, and journey across India.',
     },
     app: {
-      title: 'MAATA App & Business Ecosystem — MAATA Technologies',
+      title: 'MAATA India App & MAATA Business Ecosystem | MAATA Technologies',
       description:
-        'Explore all 16 connected features of the MAATA India digital ecosystem—communication, rides, local services, work discovery, and MAATA Business.',
+        'Explore the 16-feature MAATA India ecosystem—chats, voice calls, rides, local services, work discovery, and MAATA Business tools for Indian shopkeepers.',
     },
     technology: {
-      title: 'Technology & Engineering — MAATA Technologies',
+      title: 'Technology, Maps & MAATA AI Architecture | MAATA Technologies',
       description:
-        'Discover the engineering principles, THE MAATA CONNECTION visual system, regional accessibility, Maps, MAATA AI, and privacy architecture behind MAATA India.',
+        'Discover the engineering principles, THE MAATA CONNECTION visual system, regional accessibility, Maps, MAATA AI, and privacy design behind MAATA India.',
     },
     news: {
-      title: 'Newsroom & Updates — MAATA Technologies',
+      title: 'Newsroom, Announcements & Product Updates | MAATA Technologies',
       description:
-        'Read the latest announcements, product updates, company news, articles, insights, and featured stories from MAATA Technologies in Chittoor, Andhra Pradesh.',
+        'Read verified company announcements, product updates, articles, and featured stories from MAATA Technologies in Chittoor, Andhra Pradesh.',
     },
     careers: {
-      title: 'Careers — MAATA Technologies',
+      title: 'Careers at MAATA Technologies | Build Digital Products in India',
       description:
-        'Explore areas of work, future opportunities, and submit an application enquiry to MAATA Technologies in Chittoor, Andhra Pradesh.',
+        'Explore engineering, product, operations, and community opportunities and submit a career enquiry to MAATA Technologies in Chittoor, Andhra Pradesh.',
     },
     contact: {
-      title: 'Contact Us — MAATA Technologies',
+      title: 'Contact MAATA Technologies | Support & Partnership Enquiries',
       description:
-        'Contact MAATA Technologies in Chittoor, Andhra Pradesh via support@maataapp.com or maatasupport215@gmail.com for general, business, partnership, or feedback enquiries.',
+        'Reach MAATA Technologies in Chittoor, Andhra Pradesh at support@maataapp.com for general, business, merchant, partnership, or feedback enquiries.',
     },
     privacy: {
-      title: 'Privacy Policy — MAATA Technologies',
-      description: 'Corporate website Privacy Policy for MAATA Technologies, Chittoor, Andhra Pradesh.',
+      title: 'Privacy Policy | MAATA Technologies',
+      description:
+        'Read the corporate website Privacy Policy for MAATA Technologies, detailing how website enquiries and visitor information are handled responsibly.',
     },
     terms: {
-      title: 'Terms and Conditions — MAATA Technologies',
+      title: 'Terms and Conditions | MAATA Technologies',
       description:
-        'Corporate website Terms and Conditions for MAATA Technologies, Chittoor, Andhra Pradesh.',
+        'Review the official corporate website Terms and Conditions governing use of the MAATA Technologies website, brand assets, and published information.',
     },
   },
   a11y: {
